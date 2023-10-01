@@ -1,2 +1,4 @@
-# potatoFX
-A collection of reshade shaders
+## Manifest
+
+#### pColorNoise
+Generates gaussian chroma noise to simulate amplifier noise in digital cameras.

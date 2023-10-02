@@ -37,7 +37,7 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 	
 	float gauss_noise1 = r * cos(theta);
 	float gauss_noise2 = r * sin(theta);
-	float gauss_noise3 = (gauss_noise1+gauss_noise2)*0.7;
+	float gauss_noise3 = (gauss_noise1 + gauss_noise2) * 0.7;
 	float weight = Strength / (luma * 2 + 2.0); //Multiply luma by 2 to simulate a wider dynamic range than is actually present
 	                                            // and divide Strength by 2 to reduce sensitivity and set maximum SNR to 50%.
 	color.rgb = color.rgb * (1-weight) + float3(gauss_noise1, gauss_noise2, gauss_noise3) * weight;

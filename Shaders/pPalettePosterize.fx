@@ -17,7 +17,7 @@ uniform float3 BaseColor < __UNIFORM_COLOR_FLOAT3
 > = float3(0.75, 0.25, 0.25);
 uniform int NumColors < __UNIFORM_SLIDER_INT1
 	ui_label = "Number of colors";
-	ui_min = 2; ui_max = 32;
+	ui_min = 2; ui_max = 16;
     ui_tooltip = "Number of colors to posterize to";
 > = 6;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
@@ -42,6 +42,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 
 	float luminance = color.r;
 	float hue_range;
+	float hue_offset = 0.0;
 	
 	switch (PaletteType)
 	{
@@ -53,15 +54,20 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		{
 			hue_range = PI/2;
 		} break;
-		case 2: //Complementary --how to do actual complementary colors?
+		case 2: //Complementary
 		{
-			hue_range = PI*2;
+			hue_range = PI/2;
+			hue_offset = (luminance > 0.5)
+				? PI*0.75
+				: 0.0;
 		} break;
 	}
 
-	color.r = ceil(color.r * NumColors) / NumColors;
-	color.g = BaseColor.g;
-	color.b = BaseColor.b + (color.r - rcp(NumColors)) * hue_range;
+	color.r = ceil(luminance * NumColors) / NumColors;
+	color.g = (hue_range == 0.0)
+		? BaseColor.g * (1-luminance)
+		: BaseColor.g;
+	color.b = BaseColor.b + (color.r - rcp(NumColors)) * hue_range + hue_offset;
 	
 	color = Oklab::LCh_to_sRGB(color);
 	

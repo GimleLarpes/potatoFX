@@ -13,14 +13,14 @@ namespace Oklab
     float3 sRGB_to_Linear(float3 c)
     {
         return (c < 0.04045)
-        ? c / 12.92
-        : pow(abs((c + 0.055) / 1.055), 2.4);
+            ? c / 12.92
+            : pow(abs((c + 0.055) / 1.055), 2.4);
     }
     float3 Linear_to_sRGB(float3 c)
     {
         return (c < 0.0031308)
-        ? c * 12.92
-        : 1.055 * pow(abs(c), rcp(2.4)) - 0.055;
+            ? c * 12.92
+            : 1.055 * pow(abs(c), rcp(2.4)) - 0.055;
     }
 
     //Transformations

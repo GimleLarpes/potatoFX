@@ -126,7 +126,7 @@ namespace Oklab
         return c;
     }
 
-    //Shortcut functions -- MAYBE IMPLEMENT DIRECT COVERSIONS BETWEEN RGB AND OKLAB?
+    //Shortcut functions
     float3 sRGB_to_Oklab(float3 c)
     {
         return RGB_to_Oklab(sRGB_to_Linear(c));

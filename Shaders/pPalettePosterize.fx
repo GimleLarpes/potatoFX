@@ -78,7 +78,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		{
 			hue_range = PI/2;
 			hue_offset = (luminance > 0.33)
-				? PI*0.6 * floor(luminance / 0.33)
+				? PI*0.4167 * floor(luminance / 0.33)
 				: 0.0;
 		} break;
 		case 4: //All colors

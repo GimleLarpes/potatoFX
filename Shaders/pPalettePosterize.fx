@@ -9,8 +9,8 @@
 uniform int PaletteType < __UNIFORM_RADIO_INT1
 	ui_label = "Color palette";
 	ui_tooltip = "Type of color palette to use";
-	ui_items = "Monochrome\0Analogous\0Complementary\0";
-> = 0;
+	ui_items = "Monochrome\0Analogous\0Complementary\0Triadic\0All colors\0";
+> = 2;
 uniform float3 BaseColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Base Color";
 	ui_tooltip = "Color from which other colors are calculated";
@@ -19,12 +19,22 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
 	ui_label = "Number of colors";
 	ui_min = 2; ui_max = 16;
     ui_tooltip = "Number of colors to posterize to";
-> = 6;
+> = 8;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Dithering";
 	ui_min = 0.0; ui_max = 1.0;
     ui_tooltip = "Amount of dithering to be applied";
-> = 1.0;
+> = 0.5;
+uniform bool DesaturateHighlights <
+	ui_type = "bool";
+	ui_label = "Desaturate highlights";
+    ui_tooltip = "Creates a less harsh image";
+> = false;
+uniform float DesaturateFactor < __UNIFORM_SLIDER_FLOAT1
+	ui_label = "Desaturate amount";
+	ui_min = 0.0; ui_max = 1.0;
+    ui_tooltip = "How much to desaturate highlights";
+> = 0.75;
 
 uniform int FrameCount < source = "framecount"; >; //Use to vary dithering every frame(?) probably not needed
 
@@ -40,7 +50,10 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	float3 BaseColor = Oklab::sRGB_to_LCh(BaseColor);
 	color = Oklab::sRGB_to_LCh(color);
 
-	float luminance = color.r;
+	//Dithering
+	//--How do you implement dithering? is it with those matrices?
+
+	float luminance = color.r;//Most things that use this will probably break in HDR, should use normalized luminance instead
 	float hue_range;
 	float hue_offset = 0.0;
 	
@@ -61,11 +74,22 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 				? PI*0.75
 				: 0.0;
 		} break;
+		case 3: //Triadic
+		{
+			hue_range = PI/2;
+			hue_offset = (luminance > 0.33)
+				? PI*0.6 * floor(luminance / 0.33)
+				: 0.0;
+		} break;
+		case 4: //All colors
+		{
+			hue_range = PI*2;
+		} break;
 	}
 
-	color.r = ceil(luminance * NumColors) / NumColors;
-	color.g = (hue_range == 0.0)
-		? BaseColor.g * (1-luminance)
+	color.r = ceil(luminance * NumColors) / NumColors;//This is the only instance where real luminance is what should be used
+	color.g = DesaturateHighlights
+		? BaseColor.g * (1-pow(abs(luminance), 2) * DesaturateFactor)
 		: BaseColor.g;
 	color.b = BaseColor.b + (color.r - rcp(NumColors)) * hue_range + hue_offset;
 	

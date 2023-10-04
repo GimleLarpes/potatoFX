@@ -19,14 +19,14 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
 	ui_label = "Number of colors";
 	ui_min = 2; ui_max = 32;
     ui_tooltip = "Number of colors to posterize to";
-> = 8;
+> = 6;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Dithering";
 	ui_min = 0.0; ui_max = 1.0;
     ui_tooltip = "Amount of dithering to be applied";
 > = 1.0;
 
-uniform int FrameCount < source = "framecount"; >; //use to vary dithering every frame(?)
+uniform int FrameCount < source = "framecount"; >; //Use to vary dithering every frame(?) probably not needed
 
 float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
@@ -34,9 +34,9 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	const float PI = 3.1415927;
 	
 	float t = FrameCount * 0.2783;
-	t %= 10000; //protect against large numbers
+	t %= 10000; //Protect against large numbers
 
-	//do all color-stuff in Oklab color space
+	//Do all color-stuff in Oklab color space
 	float3 BaseColor = Oklab::sRGB_to_LCh(BaseColor);
 	color = Oklab::sRGB_to_LCh(color);
 
@@ -53,7 +53,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		{
 			hue_range = PI/2;
 		} break;
-		case 2: //Complementary how to do actual complementary colors?
+		case 2: //Complementary --how to do actual complementary colors?
 		{
 			hue_range = PI*2;
 		} break;
@@ -61,7 +61,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 
 	color.r = ceil(color.r * NumColors) / NumColors;
 	color.g = BaseColor.g;
-	color.b = BaseColor.b + (color.r - 0.490874) * hue_range;
+	color.b = BaseColor.b + (color.r - rcp(NumColors)) * hue_range;
 	
 	color = Oklab::LCh_to_sRGB(color);
 	

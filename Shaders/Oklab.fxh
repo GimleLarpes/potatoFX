@@ -3,7 +3,7 @@
 // My implementation of Oklab as described in:
 // https://bottosson.github.io/posts/oklab/
 //
-// Conversions are between sRGB <-> Linear RGB <-> CIE-XYZ <-> Oklab <-> Lch
+// Conversions are between sRGB <-> Linear RGB <-> CIE-XYZ <-> Oklab <-> LCh
 ///////////////////////////////////////////////////////////////////////////////////
 #include "pUtils.fxh"
 

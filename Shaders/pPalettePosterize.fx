@@ -10,7 +10,7 @@ uniform int PaletteType < __UNIFORM_RADIO_INT1
 	ui_label = "Color palette";
 	ui_tooltip = "Type of color palette to use";
 	ui_items = "Monochrome\0Analogous\0Complementary\0";
-> = 1;
+> = 0;
 uniform float3 BaseColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Base Color";
 	ui_tooltip = "Color from which other colors are calculated";
@@ -31,38 +31,39 @@ uniform int FrameCount < source = "framecount"; >; //use to vary dithering every
 float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
-	const float PI = 3.1415927;//REMOVE IF UNUSED
+	const float PI = 3.1415927;
 	
 	float t = FrameCount * 0.2783;
 	t %= 10000; //protect against large numbers
-	float luma = dot(color, float3(0.2126, 0.7152, 0.0722));
 
-	//do all colour-stuff in Oklab color space
+	//do all color-stuff in Oklab color space
+	float3 BaseColor = Oklab::sRGB_to_LCh(BaseColor);
+	color = Oklab::sRGB_to_LCh(color);
+
+	float luminance = color.r;
+	float hue_range;
 	
 	switch (PaletteType)
 	{
 		case 0: //Monochrome
 		{
-			//Something
+			hue_range = 0.0;
 		} break;
 		case 1: //Analogous
 		{
-			//Something
+			hue_range = PI/2;
 		} break;
-		case 2: //Complementary
+		case 2: //Complementary how to do actual complementary colors?
 		{
-			//Something
+			hue_range = PI*2;
 		} break;
 	}
 
-	color = Oklab::sRGB_to_LCh(color);//How tf you do stuff here?
-	color.r = 1.0;
-	color.g = texcoord.y*2*pUtils::PI;
-	color.b = texcoord.x*2*pUtils::PI;
-	color = Oklab::LCh_to_sRGB(color);
-
+	color.r = ceil(color.r * NumColors) / NumColors;
+	color.g = BaseColor.g;
+	color.b = BaseColor.b + (color.r - 0.490874) * hue_range;
 	
-	//color = luma;
+	color = Oklab::LCh_to_sRGB(color);
 	
 	return color.rgb;
 }

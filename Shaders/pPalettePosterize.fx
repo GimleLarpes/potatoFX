@@ -5,11 +5,12 @@
 
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
+#include "Oklab.fxh"
 uniform int PaletteType < __UNIFORM_RADIO_INT1
 	ui_label = "Color palette";
 	ui_tooltip = "Type of color palette to use";
 	ui_items = "Monochrome\0Analogous\0Complementary\0";
-> = 1;//DEFAULT IS ANALOGOUS -- REMOVE THIS COMMENT
+> = 1;
 uniform float3 BaseColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Base Color";
 	ui_tooltip = "Color from which other colors are calculated";
@@ -54,8 +55,10 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		} break;
 	}
 
+	color.rgb = Oklab::sRGB_to_Linear(color.rgb);//Test Oklab.fxh
+	color.rgb = Oklab::Linear_to_sRGB(color.rgb);
 	
-	color.rgb = luma;
+	//color.rgb = luma;
 	
 	return color.rgb;
 }

@@ -55,10 +55,8 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		} break;
 	}
 
-	color = Oklab::sRGB_to_Linear(color);//Test Oklab.fxh
-	color = Oklab::XYZ_to_Oklab(color);
-	color = Oklab::Oklab_to_XYZ(color);
-	color = Oklab::Linear_to_sRGB(color);
+	color = Oklab::sRGB_to_Oklab(color);//Test Oklab.fxh
+	color = Oklab::Oklab_to_sRGB(color);
 	
 	//color = luma;
 	

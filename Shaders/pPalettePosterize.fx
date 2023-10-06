@@ -36,7 +36,6 @@ uniform float DesaturateFactor < __UNIFORM_SLIDER_FLOAT1
     ui_tooltip = "How much to desaturate highlights";
 > = 0.75;
 
-uniform int FrameCount < source = "framecount"; >; //Use to vary dithering every frame(?) probably not needed
 
 //2x2 Bayer
 static const int bayer[2 * 2] = {
@@ -48,27 +47,25 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
 	const float PI = 3.1415927;
-	
-	float t = FrameCount * 0.2783;
-	t %= 10000; //Protect against large numbers
 
 	//Do all color-stuff in Oklab color space
 	float3 BaseColor = Oklab::sRGB_to_LCh(BaseColor);
-	color = Oklab::sRGB_to_LCh(color);
+	color = Oklab::DisplayFormat_to_LCh(color);
 
 	//Dithering
 	float m;
 	if (DitheringFactor != 0.0)
 	{
-		int2 xy = int2(texcoord * ReShade::ScreenSize) % 2;
-		m = (bayer[xy.x + 2* xy.y] * 0.25 - 0.5) * DitheringFactor;//This dithering method breaks in hdr(?)
+		int2 xy = int2(texcoord * ReShade::ScreenSize) % 2.0;
+		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * DitheringFactor;//This dithering method breaks in hdr(?)
 	}
 	else
 	{
 		m = 0.0;
 	}
 
-	float luminance = color.r + m;//Most things that use this will probably break in HDR, should use normalized luminance instead
+	float luminance = color.r + m;//Most things that use this will probably break in HDR, should use normalized luminance instead (add normalize function)
+	float luminance_norm = Oklab::Normalize(luminance);
 	float hue_range;
 	float hue_offset = 0.0;
 	
@@ -80,35 +77,35 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		} break;
 		case 1: //Analogous
 		{
-			hue_range = PI/2;
+			hue_range = PI/2.0;
 		} break;
 		case 2: //Complementary
 		{
-			hue_range = PI/2;
-			hue_offset = (luminance > 0.5)
+			hue_range = PI/2.0;
+			hue_offset = (luminance_norm > 0.5)
 				? PI*0.75
 				: 0.0;
 		} break;
 		case 3: //Triadic
 		{
-			hue_range = PI/2;
-			hue_offset = (luminance > 0.33)
-				? PI*0.4167 * floor(luminance / 0.33)
+			hue_range = PI/2.0;
+			hue_offset = (luminance_norm > 0.33)
+				? PI*0.4167 * floor(luminance_norm * 3.0)
 				: 0.0;
 		} break;
 		case 4: //All colors
 		{
-			hue_range = PI*2;
+			hue_range = PI*2.0;
 		} break;
 	}
 
-	color.r = ceil(luminance * NumColors) / NumColors;//This is the only instance where real luminance is what should be used
+	color.r = ceil(luminance * NumColors) / NumColors;
 	color.g = DesaturateHighlights
-		? BaseColor.g * (1-pow(abs(luminance), 2) * DesaturateFactor)
+		? BaseColor.g * (1 - (luminance_norm * luminance_norm) * DesaturateFactor)
 		: BaseColor.g;
 	color.b = BaseColor.b + (color.r - rcp(NumColors)) * hue_range + hue_offset;
 	
-	color = Oklab::LCh_to_sRGB(color);
+	color = Oklab::LCh_to_DisplayFormat(color);
 	
 	return color.rgb;
 }

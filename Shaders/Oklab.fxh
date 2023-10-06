@@ -9,7 +9,8 @@
 
 namespace Oklab
 {
-    //sRGB-Linear conversions
+    //Conversions to and from linear
+    //sRGB
     float3 sRGB_to_Linear(float3 c)
     {
         return (c < 0.04045)
@@ -21,6 +22,57 @@ namespace Oklab
         return (c < 0.0031308)
             ? c * 12.92
             : 1.055 * pow(abs(c), rcp(2.4)) - 0.055;
+    }
+    //Automatic conversions
+    float3 DisplayFormat_to_Linear(float3 c)
+    {   
+        #if BUFFER_COLOR_SPACE == 2//scRGB
+            c = (c - 4096.0) / 8192.0;
+        #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
+            const float m1 = 1305.0/8192.0;
+            const float m2 = 2523.0/32.0;
+            const float c1 = 107.0/128.0;
+            const float c2 = 2413.0/128.0;
+            const float c3 = 2392.0/128.0;
+            float3 p = pow(abs(c), rcp(m2));
+            c = 10000 * pow(abs(max(p - c1, 0) / (c2 - c3 * p), 0.0) , rcp(m1)); 
+        #else //Assume SDR, sRGB transfer function
+            c = (c < 0.04045)
+                ? c / 12.92
+                : pow(abs((c + 0.055) / 1.055), 2.4);
+        #endif
+            return c;
+    }
+    float3 Linear_to_DisplayFormat(float3 c)
+    {   
+        #if BUFFER_COLOR_SPACE == 2//scRGB
+            c = c * 8192.0 + 4096.0;
+        #elif BUFFER_COLOR_SPACE == 3 //HDR10 ST2084
+            const float m1 = 1305.0/8192.0;
+            const float m2 = 2523.0/32.0;
+            const float c1 = 107.0/128.0;
+            const float c2 = 2413.0/128.0;
+            const float c3 = 2392.0/128.0;
+            float y = pow(abs(c * 0.0001), m1);
+            c = pow(abs((c1 + c2 * y) / (1 + c3 * y)), m2);
+        #else //Assume SDR, inverse sRGB transfer function
+            c = (c < 0.0031308)
+                ? c * 12.92
+                : 1.055 * pow(abs(c), rcp(2.4)) - 0.055;
+        #endif
+            return c;
+    }
+    //Utility functions for HDR
+    float Normalize(float v)
+    {   
+        #if BUFFER_COLOR_SPACE == 2//scRGB
+            v = (v + 0.5) / 8.0;
+        #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
+            v = v * 0.0001;
+        #else //Assume SDR
+            v = v;
+        #endif
+            return v;
     }
 
     //Transformations
@@ -126,6 +178,7 @@ namespace Oklab
         return c;
     }
 
+
     //Shortcut functions
     float3 sRGB_to_Oklab(float3 c)
     {
@@ -142,5 +195,21 @@ namespace Oklab
     float3 LCh_to_sRGB(float3 c)
     {
         return Linear_to_sRGB(Oklab_to_RGB(LCh_to_Oklab(c)));
+    }
+    float3 DisplayFormat_to_Oklab(float3 c)
+    {
+        return RGB_to_Oklab(DisplayFormat_to_Linear(c));
+    }
+    float3 Oklab_to_DisplayFormat(float3 c)
+    {
+        return Linear_to_DisplayFormat(Oklab_to_RGB(c));
+    }
+    float3 DisplayFormat_to_LCh(float3 c)
+    {
+        return Oklab_to_LCh(RGB_to_Oklab(DisplayFormat_to_Linear(c)));
+    }
+    float3 LCh_to_DisplayFormat(float3 c)
+    {
+        return Linear_to_DisplayFormat(Oklab_to_RGB(LCh_to_Oklab(c)));
     }
 }

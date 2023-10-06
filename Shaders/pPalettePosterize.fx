@@ -22,9 +22,9 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
 > = 8;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Dithering";
-	ui_min = 0.0; ui_max = 1.0;
+	ui_min = 0.0; ui_max = 0.25;
     ui_tooltip = "Amount of dithering to be applied";
-> = 0.5;
+> = 0.02;
 uniform bool DesaturateHighlights <
 	ui_type = "bool";
 	ui_label = "Desaturate highlights";
@@ -37,6 +37,12 @@ uniform float DesaturateFactor < __UNIFORM_SLIDER_FLOAT1
 > = 0.75;
 
 uniform int FrameCount < source = "framecount"; >; //Use to vary dithering every frame(?) probably not needed
+
+//2x2 Bayer
+static const int bayer[2 * 2] = {
+	0, 2,
+	3, 1
+};
 
 float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
@@ -51,9 +57,18 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	color = Oklab::sRGB_to_LCh(color);
 
 	//Dithering
-	//--How do you implement dithering? is it with those matrices?
+	float m;
+	if (DitheringFactor != 0.0)
+	{
+		int2 xy = int2(texcoord * ReShade::ScreenSize) % 2;
+		m = (bayer[xy.x + 2* xy.y] * 0.25 - 0.5) * DitheringFactor;//This dithering method breaks in hdr
+	}
+	else
+	{
+		m = 0.0;
+	}
 
-	float luminance = color.r;//Most things that use this will probably break in HDR, should use normalized luminance instead
+	float luminance = color.r + m;//Most things that use this will probably break in HDR, should use normalized luminance instead
 	float hue_range;
 	float hue_offset = 0.0;
 	

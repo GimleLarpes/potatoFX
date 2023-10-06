@@ -22,7 +22,7 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
 > = 8;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Dithering";
-	ui_min = 0.0; ui_max = 0.25;
+	ui_min = 0.0; ui_max = 0.1;
     ui_tooltip = "Amount of dithering to be applied";
 > = 0.02;
 uniform bool DesaturateHighlights <

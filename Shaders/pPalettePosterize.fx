@@ -61,7 +61,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	if (DitheringFactor != 0.0)
 	{
 		int2 xy = int2(texcoord * ReShade::ScreenSize) % 2;
-		m = (bayer[xy.x + 2* xy.y] * 0.25 - 0.5) * DitheringFactor;//This dithering method breaks in hdr
+		m = (bayer[xy.x + 2* xy.y] * 0.25 - 0.5) * DitheringFactor;//This dithering method breaks in hdr(?)
 	}
 	else
 	{

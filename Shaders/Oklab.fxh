@@ -32,7 +32,7 @@ namespace Oklab
     float3 DisplayFormat_to_Linear(float3 c)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            c = (c - 4096.0) / 8192.0;
+            c = c;
 
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
             const float m1 = 0.15930176; // 1305/8192
@@ -61,7 +61,7 @@ namespace Oklab
     float3 Linear_to_DisplayFormat(float3 c)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            c = c * 8192.0 + 4096.0;
+            c = c;
 
         #elif BUFFER_COLOR_SPACE == 3 //HDR10 ST2084
             const float m1 = 0.15930176; // 1305/8192
@@ -91,7 +91,19 @@ namespace Oklab
     float Normalize(float v)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            v = (v + 0.5) / 8.0;
+            v = v * 0.125;
+        #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
+            v = v * 0.0001;
+        #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
+            v = v;
+        #else //Assume SDR
+            v = v;
+        #endif
+            return v;
+    }float3 Normalize(float3 v)
+    {   
+        #if BUFFER_COLOR_SPACE == 2//scRGB
+            v = v * 0.125;
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
             v = v * 0.0001;
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG

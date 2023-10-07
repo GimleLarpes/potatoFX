@@ -20,6 +20,11 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
 	ui_min = 2; ui_max = 16;
     ui_tooltip = "Number of colors to posterize to";
 > = 8;
+uniform float PaletteBalance < __UNIFORM_SLIDER_FLOAT1
+	ui_label = "Palette Balance (adjust if in HDR)";
+	ui_min = 0.1; ui_max = 2.0;
+    ui_tooltip = "Adjusts thresholds for color palette sections";
+> = 1.0;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Dithering";
 	ui_min = 0.0; ui_max = 0.1;
@@ -83,15 +88,15 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		case 2: //Complementary
 		{
 			hue_range = PI/2.0;
-			hue_offset = (luminance_norm > 0.5)
+			hue_offset = (luminance_norm > 0.5 * PaletteBalance)
 				? PI*0.75
 				: 0.0;
 		} break;
 		case 3: //Triadic
 		{
 			hue_range = PI/2.0;
-			hue_offset = (luminance_norm > 0.33)
-				? PI*0.4167 * floor(luminance_norm * 3.0)
+			hue_offset = (luminance_norm > 0.33 * PaletteBalance)
+				? PI*0.4167 * floor(luminance_norm * 3.0 / PaletteBalance)
 				: 0.0;
 		} break;
 		case 4: //All colors

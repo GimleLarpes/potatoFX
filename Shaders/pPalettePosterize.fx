@@ -51,7 +51,7 @@ static const int bayer[2 * 2] = {
 float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
-	const float PI = 3.1415927;
+	static const float PI = 3.1415927;
 
 	//Do all color-stuff in Oklab color space
 	float3 BaseColor = Oklab::RGB_to_LCh(BaseColor);

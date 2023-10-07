@@ -18,7 +18,8 @@ uniform int FrameCount < source = "framecount"; >; //Use to vary noise
 float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
-	const float PI = 3.1415927;
+	static const float PI = 3.1415927;
+	static const float noise_curve = Oklab::get_InvNorm_Factor()*0.001;
 	
 	float t = FrameCount * 0.2783;
 	t %= 10000; //Protect against very large numbers
@@ -39,8 +40,8 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 	float gauss_noise1 = r * cos(theta);
 	float gauss_noise2 = r * sin(theta);
 	float gauss_noise3 = (gauss_noise1 + gauss_noise2) * 0.7;
-	float weight = Strength * max(Oklab::get_InvNorm_Factor()*0.001, 1.0) / (luma * 2 + 2.0); //Multiply luma by 2 to simulate a wider dynamic range
-	                                                                        //divide Strength by 2 to reduce sensitivity and set maximum SNR to 50%.
+	float weight = Strength * max(noise_curve, 1.0) / (luma * 2 + 2.0); //Multiply luma by 2 to simulate a wider dynamic range
+	                                                                    //divide Strength by 2 to reduce sensitivity and set maximum SNR to 50%.
 	color.rgb = color.rgb * (1-weight) + float3(gauss_noise1, gauss_noise2, gauss_noise3) * weight;
 	
 	return color.rgb;

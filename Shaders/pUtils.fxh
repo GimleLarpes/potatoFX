@@ -13,5 +13,14 @@ float fastatan2(float y, float x)//error < 0.2 degrees, saves about 40% vs atan2
     i = a ? (x < 0 ? piadd : 0) + i : 0.5 * piadd - i;
     return i;
 }
+//--cbrt
+float cbrt(float v)
+{
+    return sign(v) * pow(abs(v), 0.33333333); //pow is slow, find other way?
+}
+float3 cbrt(float3 v)
+{
+    return sign(v) * pow(abs(v), 0.33333333); //pow is slow, find other way?
+}
 
 }

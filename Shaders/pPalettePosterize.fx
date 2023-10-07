@@ -61,7 +61,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	float m;
 	if (DitheringFactor != 0.0)
 	{
-		float n = Oklab::get_InvNorm_Factor();
+		static const float n = Oklab::get_InvNorm_Factor();
 		int2 xy = int2(texcoord * ReShade::ScreenSize) % 2.0;
 		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * n * DitheringFactor;
 	}

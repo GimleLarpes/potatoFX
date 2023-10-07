@@ -44,8 +44,7 @@ namespace Oklab
             const float c2 = 18.8515625; // 2413/128
             const float c3 = 18.6875;    // 2392/128
             float3 p = pow(abs(c), rcp(m2));
-            c = 10000 * pow(abs(max(p - c1, 0) / (c2 - c3 * p), 0.0) , rcp(m1)); 
-            c = c / HDR10_WHITELEVEL;
+            c = 10000.0 / HDR10_WHITELEVEL * pow(abs(max(p - c1, 0) / (c2 - c3 * p), 0.0) , rcp(m1)); 
 
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
             const float a = 0.17883277;

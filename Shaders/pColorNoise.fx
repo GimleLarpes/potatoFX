@@ -12,7 +12,7 @@ uniform float Strength < __UNIFORM_SLIDER_FLOAT1
     ui_tooltip = "Noise strength";
 > = 0.05;
 
-uniform int FrameCount < source = "framecount"; >; //Use to vary noise every frame
+uniform int FrameCount < source = "framecount"; >; //Use to vary noise
 
 float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {

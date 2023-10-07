@@ -14,7 +14,7 @@ uniform int PaletteType < __UNIFORM_RADIO_INT1
 uniform float3 BaseColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Base Color";
 	ui_tooltip = "Color from which other colors are calculated";
-> = float3(0.75, 0.25, 0.25);
+> = float3(0.52, 0.05, 0.05);
 uniform int NumColors < __UNIFORM_SLIDER_INT1
 	ui_label = "Number of colors";
 	ui_min = 2; ui_max = 16;
@@ -49,22 +49,23 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	const float PI = 3.1415927;
 
 	//Do all color-stuff in Oklab color space
-	float3 BaseColor = Oklab::sRGB_to_LCh(BaseColor);
+	float3 BaseColor = Oklab::RGB_to_LCh(BaseColor);
 	color = Oklab::DisplayFormat_to_LCh(color);
 
 	//Dithering
 	float m;
 	if (DitheringFactor != 0.0)
 	{
+		float n = Oklab::get_InvNorm_Factor();
 		int2 xy = int2(texcoord * ReShade::ScreenSize) % 2.0;
-		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * DitheringFactor;//This dithering method breaks in hdr(?)
+		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * n * DitheringFactor;
 	}
 	else
 	{
 		m = 0.0;
 	}
 
-	float luminance = color.r + m;//Most things that use this will probably break in HDR, should use normalized luminance instead (add normalize function)
+	float luminance = color.r + m;
 	float luminance_norm = Oklab::Normalize(luminance);
 	float hue_range;
 	float hue_offset = 0.0;

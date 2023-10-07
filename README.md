@@ -1,6 +1,6 @@
 ## Note
 ### All potatoFX shaders are HDR compatible
-Supported formats: % | **HDR10** | **HLG** | **scRGB** |
+Supported formats: » | **HDR10** | **HLG** | **scRGB** |
 
 <br/><br/>
 

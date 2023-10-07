@@ -23,7 +23,7 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
 uniform float PaletteBalance < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Palette Balance (adjust if in HDR)";
 	ui_min = 0.1; ui_max = 2.0;
-    ui_tooltip = "Adjusts thresholds for color palette sections";
+    ui_tooltip = "Adjusts thresholds for color palette";
 > = 1.0;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Dithering";

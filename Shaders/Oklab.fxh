@@ -44,7 +44,8 @@ namespace Oklab
             const float c2 = 18.8515625; // 2413/128
             const float c3 = 18.6875;    // 2392/128
             float3 p = pow(abs(c), rcp(m2));
-            c = 10000.0 / HDR10_WHITELEVEL * pow(abs(max(p - c1, 0) / (c2 - c3 * p), 0.0) , rcp(m1)); 
+            c = pow(abs(max(p - c1, 0) / (c2 - c3 * p), 0.0) , rcp(m1)); 
+            c = c * 10000.0 / HDR10_WHITELEVEL;
 
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
             const float a = 0.17883277;
@@ -53,6 +54,7 @@ namespace Oklab
             c = (c > 0.5)
                 ? (exp((c + c4) / a) + b) / 12.0
                 : (c * c) / 3.0;
+            c = c * 1000.0 / HDR10_WHITELEVEL;
 
         #else //Assume SDR, sRGB
             c = (c < 0.04045)
@@ -79,6 +81,7 @@ namespace Oklab
             const float a = 0.17883277;
             const float b = 0.28466892;
             const float c4 = 0.55991073;
+            c = c * (HDR10_WHITELEVEL * 0.001);
             c = (c < 0.08333333) // 1/12
                 ? sqrt(3 * c)
                 : a * log(12 * c - b) + c4;
@@ -98,7 +101,7 @@ namespace Oklab
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
             v = v * (HDR10_WHITELEVEL * 0.0001);
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            v = v;
+            v = v * HDR10_WHITELEVEL * 0.001;
         #else //Assume SDR
             v = v;
         #endif
@@ -108,9 +111,9 @@ namespace Oklab
         #if BUFFER_COLOR_SPACE == 2//scRGB
             v = v * 0.125;
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            v = v * (HDR10_WHITELEVEL * 0.0001);
+            v = v * HDR10_WHITELEVEL * 0.0001;
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            v = v;
+            v = v * HDR10_WHITELEVEL * 0.001;
         #else //Assume SDR
             v = v;
         #endif
@@ -124,7 +127,7 @@ namespace Oklab
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
             v = 10000.0 / HDR10_WHITELEVEL;
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            v = 1.0;
+            v = 1000.0 / HDR10_WHITELEVEL;
         #else //Assume SDR
             v = 1.0;
         #endif

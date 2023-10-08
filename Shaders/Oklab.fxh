@@ -108,7 +108,7 @@ namespace Oklab
         #if BUFFER_COLOR_SPACE == 2//scRGB
             v = v * 0.125;
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            v = v * 0.0001;
+            v = v * (HDR10_WHITELEVEL * 0.0001);
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
             v = v;
         #else //Assume SDR
@@ -122,7 +122,7 @@ namespace Oklab
         #if BUFFER_COLOR_SPACE == 2//scRGB
             v = 8.0;
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            v = 10000.0;
+            v = 10000.0 / HDR10_WHITELEVEL;
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
             v = 1.0;
         #else //Assume SDR

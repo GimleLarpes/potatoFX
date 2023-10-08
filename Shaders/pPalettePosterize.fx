@@ -54,7 +54,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	static const float PI = 3.1415927;
 
 	//Do all color-stuff in Oklab color space
-	float3 BaseColor = Oklab::RGB_to_LCh(BaseColor);
+	static const float3 BaseColor = Oklab::RGB_to_LCh(BaseColor);
 	color = Oklab::DisplayFormat_to_LCh(color);
 
 	//Dithering
@@ -62,7 +62,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	if (DitheringFactor != 0.0)
 	{
 		static const float n = Oklab::get_InvNorm_Factor();
-		int2 xy = int2(texcoord * ReShade::ScreenSize) % 2.0;
+		const int2 xy = int2(texcoord * ReShade::ScreenSize) % 2.0;
 		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * n * DitheringFactor;
 	}
 	else
@@ -71,7 +71,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	}
 
 	float luminance = color.r + m;
-	float luminance_norm = Oklab::Normalize(luminance);
+	const float luminance_norm = Oklab::Normalize(luminance);
 	float hue_range;
 	float hue_offset = 0.0;
 	

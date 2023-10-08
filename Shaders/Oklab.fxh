@@ -18,7 +18,6 @@ namespace Oklab
     static const float HDR10_WHITELEVEL = 80.0;//Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
 
     //Conversions to and from linear
-    //sRGB
     float3 sRGB_to_Linear(float3 c)
     {
         return (c < 0.04045)
@@ -31,6 +30,50 @@ namespace Oklab
             ? c * 12.92
             : 1.055 * pow(abs(c), rcp(2.4)) - 0.055;
     }
+    float3 PQ_to_Linear(float3 c)
+    {
+        static const float m1 = 0.15930176; // 1305/8192
+        static const float m2 = 78.84375;   // 2523/32
+        static const float c1 = 0.8359375;  // 107/128
+        static const float c2 = 18.8515625; // 2413/128
+        static const float c3 = 18.6875;    // 2392/128
+        const float3 p = pow(abs(c), rcp(m2));
+        c = pow(abs(max(p - c1, 0.0) / (c2 - c3 * p)) , rcp(m1)); 
+        return c * 10000.0 / HDR10_WHITELEVEL;
+    }
+    float3 Linear_to_PQ(float3 c)
+    {
+        static const float m1 = 0.15930176; // 1305/8192
+        static const float m2 = 78.84375;   // 2523/32
+        static const float c1 = 0.8359375;  // 107/128
+        static const float c2 = 18.8515625; // 2413/128
+        static const float c3 = 18.6875;    // 2392/128
+        const float y = pow(abs(c * (HDR10_WHITELEVEL * 0.0001)), m1);
+        return pow(abs((c1 + c2 * y) / (1 + c3 * y)), m2);
+    }
+    float3 HLG_to_Linear(float3 c)
+    {
+        static const float a = 0.17883277;
+        static const float b = 0.28466892;
+        static const float c4 = 0.55991073;
+        c = (c > 0.5)
+            ? (exp((c + c4) / a) + b) / 12.0
+            : (c * c) / 3.0;
+        return c * 1000.0 / HDR10_WHITELEVEL;
+    }
+    float3 Linear_to_HLG(float3 c)
+    {
+        static const float a = 0.17883277;
+        static const float b = 0.28466892;
+        static const float c4 = 0.55991073;
+        c = c * (HDR10_WHITELEVEL * 0.001);
+        c = (c < 0.08333333) // 1/12
+            ? sqrt(3 * c)
+            : a * log(12 * c - b) + c4;
+        return c;
+    }
+
+
     //Automatic conversions
     float3 DisplayFormat_to_Linear(float3 c)
     {   
@@ -38,28 +81,13 @@ namespace Oklab
             c = c;
 
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            const float m1 = 0.15930176; // 1305/8192
-            const float m2 = 78.84375;   // 2523/32
-            const float c1 = 0.8359375;  // 107/128
-            const float c2 = 18.8515625; // 2413/128
-            const float c3 = 18.6875;    // 2392/128
-            float3 p = pow(abs(c), rcp(m2));
-            c = pow(abs(max(p - c1, 0) / (c2 - c3 * p), 0.0) , rcp(m1)); 
-            c = c * 10000.0 / HDR10_WHITELEVEL;
+            c = PQ_to_Linear(c);
 
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            const float a = 0.17883277;
-            const float b = 0.28466892;
-            const float c4 = 0.55991073;
-            c = (c > 0.5)
-                ? (exp((c + c4) / a) + b) / 12.0
-                : (c * c) / 3.0;
-            c = c * 1000.0 / HDR10_WHITELEVEL;
+            c = HLG_to_Linear(c);
 
         #else //Assume SDR, sRGB
-            c = (c < 0.04045)
-                ? c / 12.92
-                : pow(abs((c + 0.055) / 1.055), 2.4);
+            c = sRGB_to_Linear(c);
         #endif
             return c;
     }
@@ -69,30 +97,17 @@ namespace Oklab
             c = c;
 
         #elif BUFFER_COLOR_SPACE == 3 //HDR10 ST2084
-            const float m1 = 0.15930176; // 1305/8192
-            const float m2 = 78.84375;   // 2523/32
-            const float c1 = 0.8359375;  // 107/128
-            const float c2 = 18.8515625; // 2413/128
-            const float c3 = 18.6875;    // 2392/128
-            float y = pow(abs(c * (HDR10_WHITELEVEL * 0.0001)), m1);
-            c = pow(abs((c1 + c2 * y) / (1 + c3 * y)), m2);
+            c = Linear_to_PQ(c);
 
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            const float a = 0.17883277;
-            const float b = 0.28466892;
-            const float c4 = 0.55991073;
-            c = c * (HDR10_WHITELEVEL * 0.001);
-            c = (c < 0.08333333) // 1/12
-                ? sqrt(3 * c)
-                : a * log(12 * c - b) + c4;
+            c = Linear_to_HLG(c);
 
         #else //Assume SDR, sRGB
-            c = (c < 0.0031308)
-                ? c * 12.92
-                : 1.055 * pow(abs(c), rcp(2.4)) - 0.055;
+            c = Linear_to_sRGB(c);
         #endif
             return c;
     }
+    
     //Utility functions for HDR
     float Normalize(float v)
     {   

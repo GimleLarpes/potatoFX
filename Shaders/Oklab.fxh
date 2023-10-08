@@ -66,7 +66,7 @@ namespace Oklab
         static const float a = 0.17883277;
         static const float b = 0.28466892;
         static const float c4 = 0.55991073;
-        c = c * (HDR10_WHITELEVEL * 0.001);
+        c *= (HDR10_WHITELEVEL * 0.001);
         c = (c < 0.08333333) // 1/12
             ? sqrt(3 * c)
             : a * log(12 * c - b) + c4;
@@ -169,11 +169,11 @@ namespace Oklab
     float Normalize(float v)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            v = v * 0.125;
+            v *= 0.125;
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            v = v * HDR10_WHITELEVEL * 0.0001;
+            v *= HDR10_WHITELEVEL * 0.0001;
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            v = v * HDR10_WHITELEVEL * 0.001;
+            v *= HDR10_WHITELEVEL * 0.001;
         #else //Assume SDR
             v = v;
         #endif
@@ -181,11 +181,11 @@ namespace Oklab
     }float3 Normalize(float3 v)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            v = v * 0.125;
+            v *= 0.125;
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            v = v * HDR10_WHITELEVEL * 0.0001;
+            v *= HDR10_WHITELEVEL * 0.0001;
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            v = v * HDR10_WHITELEVEL * 0.001;
+            v *= HDR10_WHITELEVEL * 0.001;
         #else //Assume SDR
             v = v;
         #endif

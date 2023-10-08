@@ -15,9 +15,7 @@
 namespace Oklab
 {
     //HDR constants
-    #ifndef HDR10_WHITELEVEL//Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
-	    #define HDR10_WHITELEVEL 80.0;
-    #endif
+    static const float HDR10_WHITELEVEL = 80.0;//Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
 
     //Conversions to and from linear
     float3 sRGB_to_Linear(float3 c)
@@ -352,5 +350,21 @@ namespace Oklab
     float3 LCh_to_DisplayFormat(float3 c)
     {
         return Linear_to_DisplayFormat(Oklab_to_RGB(LCh_to_Oklab(c)));
+    }
+    float3 Fast_DisplayFormat_to_Oklab(float3 c)
+    {
+        return RGB_to_Oklab(Fast_DisplayFormat_to_Linear(c));
+    }
+    float3 Fast_Oklab_to_DisplayFormat(float3 c)
+    {
+        return Fast_Linear_to_DisplayFormat(Oklab_to_RGB(c));
+    }
+    float3 Fast_DisplayFormat_to_LCh(float3 c)
+    {
+        return Oklab_to_LCh(RGB_to_Oklab(Fast_DisplayFormat_to_Linear(c)));
+    }
+    float3 Fast_LCh_to_DisplayFormat(float3 c)
+    {
+        return Fast_Linear_to_DisplayFormat(Oklab_to_RGB(LCh_to_Oklab(c)));
     }
 }

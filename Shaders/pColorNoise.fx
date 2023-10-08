@@ -11,6 +11,7 @@
 uniform float Strength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_tooltip = "Noise strength";
+	ui_category = "Settings";
 > = 0.05;
 
 uniform int FrameCount < source = "framecount"; >; //Use to vary noise

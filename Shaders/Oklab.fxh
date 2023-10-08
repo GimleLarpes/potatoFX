@@ -72,7 +72,7 @@ namespace Oklab
             : a * log(12 * c - b) + c4;
         return c;
     }
-    //Approximate conversions
+    //Approximations for slow transfer functions
     float3 Fast_sRGB_to_Linear(float3 c)
     {
         return max(c * c, c / 12.92);
@@ -81,9 +81,22 @@ namespace Oklab
     {
         return max(sqrt(c), c * 12.92);
     }
-    //Approximate functions for PQ and HLG
-    //Calculate approximation for PQ, use taylor series?
-    // if that works- use the same method for HLG?
+    float3 Fast_PQ_to_Linear(float3 c) //Method for fast PQ by rj200
+    {   
+        const float3 sq = c * c;
+        const float3 qq = sq * sq;
+        const float3 oq = qq * qq;
+        c = max(max(sq / 455.0, qq / 5.5), oq);
+        return c * 10000.0 / HDR10_WHITELEVEL;
+    }
+    float3 Fast_Linear_to_PQ(float3 c)
+    {
+        const float3 sr = sqrt(c * (HDR10_WHITELEVEL * 0.0001));
+		const float3 qr = sqrt(sr);
+		const float3 or = sqrt(qr);
+		return min(or, min(sqrt(sqrt(5.5)) * qr, sqrt(455.0) * sr));
+    }
+
 
 
     //Automatic conversions
@@ -116,6 +129,38 @@ namespace Oklab
 
         #else //Assume SDR, sRGB
             c = Linear_to_sRGB(c);
+        #endif
+            return c;
+    }
+    float3 Fast_DisplayFormat_to_Linear(float3 c)
+    {   
+        #if BUFFER_COLOR_SPACE == 2//scRGB
+            c = c;
+
+        #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
+            c = Fast_PQ_to_Linear(c);
+
+        #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
+            c = HLG_to_Linear(c);
+
+        #else //Assume SDR, sRGB
+            c = Fast_sRGB_to_Linear(c);
+        #endif
+            return c;
+    }
+    float3 Fast_Linear_to_DisplayFormat(float3 c)
+    {   
+        #if BUFFER_COLOR_SPACE == 2//scRGB
+            c = c;
+
+        #elif BUFFER_COLOR_SPACE == 3 //HDR10 ST2084
+            c = Fast_Linear_to_PQ(c);
+
+        #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
+            c = Linear_to_HLG(c);
+
+        #else //Assume SDR, sRGB
+            c = Fast_Linear_to_sRGB(c);
         #endif
             return c;
     }

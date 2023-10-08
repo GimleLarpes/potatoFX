@@ -72,6 +72,18 @@ namespace Oklab
             : a * log(12 * c - b) + c4;
         return c;
     }
+    //Approximate conversions
+    float3 Fast_sRGB_to_Linear(float3 c)
+    {
+        return max(c * c, c / 12.92);
+    }
+    float3 Fast_Linear_to_sRGB(float3 c)
+    {
+        return max(sqrt(c), c * 12.92);
+    }
+    //Approximate functions for PQ and HLG
+    //Calculate approximation for PQ, use taylor series?
+    // if that works- use the same method for HLG?
 
 
     //Automatic conversions

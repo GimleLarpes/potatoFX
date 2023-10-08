@@ -15,7 +15,7 @@
 namespace Oklab
 {
     //HDR constants
-    static const float HDR10_WHITELEVEL = 80.0;//Set HDR whitelevel to 80 to match 0-1 SDR
+    static const float HDR10_WHITELEVEL = 80.0;//Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
 
     //Conversions to and from linear
     //sRGB
@@ -99,7 +99,7 @@ namespace Oklab
         #if BUFFER_COLOR_SPACE == 2//scRGB
             v = v * 0.125;
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            v = v * (HDR10_WHITELEVEL * 0.0001);
+            v = v * HDR10_WHITELEVEL * 0.0001;
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
             v = v * HDR10_WHITELEVEL * 0.001;
         #else //Assume SDR

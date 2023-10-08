@@ -15,7 +15,9 @@
 namespace Oklab
 {
     //HDR constants
-    static const float HDR10_WHITELEVEL = 80.0;//Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
+    #ifndef HDR10_WHITELEVEL//Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
+	    #define HDR10_WHITELEVEL 80.0;
+    #endif
 
     //Conversions to and from linear
     float3 sRGB_to_Linear(float3 c)

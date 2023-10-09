@@ -149,7 +149,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	//White balance calculations
 	if (color_temperature != 0.0)
 	{
-		//Color temperature adjustments
+		//Color temperature adjustments, how are these calculated?
 	}
 	if (color_tint != 0.0)
 	{

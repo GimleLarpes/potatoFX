@@ -79,7 +79,7 @@ namespace Oklab
     }
     float3 Fast_Linear_to_sRGB(float3 c)
     {
-        return max(sqrt(c), c * 12.92);
+        return min(sqrt(c), c * 12.92);
     }
     float3 Fast_PQ_to_Linear(float3 c) //Method for fast PQ by rj200
     {   

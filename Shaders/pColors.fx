@@ -146,14 +146,16 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		? Oklab::Fast_DisplayFormat_to_Oklab(color)
 		: Oklab::DisplayFormat_to_Oklab(color);
 	
+	
+	////Processing
 	//White balance calculations
-	if (color_temperature != 0.0)
+	if (color_temperature != 0.0 | color_tint != 0.0)
 	{
-		//Color temperature adjustments, how are these calculated?
+		color.b = lerp(color.b, sign(color_temperature + color_tint) * 0.25, abs(color_temperature + min(color_tint, 0.0)) * 0.35); // 0.7/2
 	}
 	if (color_tint != 0.0)
 	{
-		//Color tint adjustments
+		color.g = lerp(color.b, sign(-color_tint)*0.25, abs(color_tint * 0.7));
 	}
 
 	

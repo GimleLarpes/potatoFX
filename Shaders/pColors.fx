@@ -136,9 +136,9 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	static const float PI = 3.1415927;
 
 	//Shadows-midtones-highlighs colors, use polar coordinates because it makes tinting easier
-	static const float3 shadow_color = Oklab::RGB_to_LCH(shadow_color);
-	static const float3 midtone_color = Oklab::RGB_to_LCH(midtone_color);
-	static const float3 highlight_color = Oklab::RGB_to_LCH(highlight_color);
+	static const float3 shadow_color = Oklab::RGB_to_LCh(shadow_color);
+	static const float3 midtone_color = Oklab::RGB_to_LCh(midtone_color);
+	static const float3 highlight_color = Oklab::RGB_to_LCh(highlight_color);
 	
 
 	//Do all color-stuff in Oklab color space

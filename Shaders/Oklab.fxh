@@ -178,7 +178,8 @@ namespace Oklab
             v = v;
         #endif
             return v;
-    }float3 Normalize(float3 v)
+    }
+    float3 Normalize(float3 v)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
             v *= 0.125;

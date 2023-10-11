@@ -173,36 +173,29 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	//const float shadow_weight = get_weight(relative_luminance, shadow_threshold, -shadow_curve_slope);
-	float shadow_weight=1.0;//DEBUG
+	const float shadow_weight = get_weight(relative_luminance, shadow_threshold, -shadow_curve_slope);
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + shadow_brightness * shadow_weight);
-		color.g *= (1 + (shadow_saturation + shadow_tint.g) * shadow_weight);
-		color.b = pUtils::clerp(color.b, shadow_tint.b, shadow_tint.g * shadow_weight); // Issue is that this doesn't make color.b the same hue as shadow tint even when it should
+		color.g *= (1 + shadow_saturation * shadow_weight);
+		color.b = lerp(color.b, shadow_tint.b, 2 * PI * shadow_tint.g * shadow_weight);
 	}
-	color.r *= (1 + shadow_brightness * shadow_weight);
-	color.g *= (1 + (shadow_saturation + shadow_tint.g) * shadow_weight);
-	color.b = pUtils::clerp(color.b, shadow_tint.b, shadow_tint.g * shadow_weight);
-	color.b = shadow_tint.b;
-
 	//Highlights
 	const float highlight_weight = get_weight(relative_luminance, highlight_threshold, highlight_curve_slope);
-	//if (highlight_weight != 0.0)
-	//{
-	//	color.r *= (1 + highlight_brightness * highlight_weight);
-	//	color.g *= (1 + (highlight_saturation + highlight_tint.g) * highlight_weight);
-	//	color.b = pUtils::clerp(color.b, highlight_tint.b, highlight_tint.g * highlight_weight);
-	//}
-
+	if (highlight_weight != 0.0)
+	{
+		color.r *= (1 + highlight_brightness * highlight_weight);
+		color.g *= (1 + highlight_saturation * highlight_weight);
+		color.b = lerp(color.b, highlight_tint.b, 2 * PI * highlight_tint.g * highlight_weight);
+	}
 	//Midtones
 	const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
-	//if (midtone_weight != 0.0)
-	//{
-	//	color.r *= (1 + midtone_brightness * midtone_weight);
-	//	color.g *= (1 + (midtone_saturation + highlight_tint.g) * midtone_weight);
-	//	color.b = pUtils::clerp(color.b, midtone_tint.b, midtone_tint.g * midtone_weight);
-	//}
+	if (midtone_weight != 0.0)
+	{
+		color.r *= (1 + midtone_brightness * midtone_weight);
+		color.g *= (1 + midtone_saturation * midtone_weight);
+		color.b = lerp(color.b, midtone_tint.b, 2 * PI * midtone_tint.g * midtone_weight);
+	}
 	
 	
 

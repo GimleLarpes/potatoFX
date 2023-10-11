@@ -166,7 +166,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	//}
 	color = Oklab::Oklab_to_LCh(color);
 
-	//const float relative_luminance = Oklab::Normalize(color.r);
+	//const float luminance_norm = Oklab::Normalize(color.r);
 
 
 	////Global adjustments
@@ -175,7 +175,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	//const float shadow_weight = get_weight(relative_luminance, shadow_threshold, -shadow_curve_slope);
+	//const float shadow_weight = get_weight(luminance_norm, shadow_threshold, -shadow_curve_slope);
 	//if (shadow_weight != 0.0)
 	//{
 	//	color.r *= (1 + shadow_brightness * shadow_weight);
@@ -183,7 +183,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	//	color.gb = lerp(color.gb, shadow_tint.gb, 5.943 * shadow_tint.g * shadow_weight);
 	//}
 	//Highlights
-	//const float highlight_weight = get_weight(relative_luminance, highlight_threshold, highlight_curve_slope);
+	//const float highlight_weight = get_weight(luminance_norm, highlight_threshold, highlight_curve_slope);
 	//if (highlight_weight != 0.0)
 	//{
 	//	color.r *= (1 + highlight_brightness * highlight_weight);

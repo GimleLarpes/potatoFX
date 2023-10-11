@@ -170,8 +170,8 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 
 	////Global adjustments
-	//color.g *= (1 + saturation);
-	//color.r *= (1 + brightness);
+	color.g *= (1 + saturation);
+	color.r *= (1 + brightness);
 
 	////Shadows-midtones-highlights
 	//Shadows

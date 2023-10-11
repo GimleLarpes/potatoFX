@@ -37,79 +37,79 @@ uniform float brightness < __UNIFORM_SLIDER_FLOAT1
 //Shadows midtones highlights
 //Shadows
 uniform float3 shadow_tint < __UNIFORM_COLOR_FLOAT3 //Use this to control shadow color
-	ui_label = "Shadow Tint";
+	ui_label = "Tint";
 	ui_tooltip = "Color to which shadows are tinted";
 	ui_category = "Shadows";
-> = float3(0.0, 0.4, 1.0);
+> = float3(0.5, 0.7, 1.0);
 uniform float shadow_saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
-	ui_label = "Shadow Saturation";
+	ui_label = "Saturation";
 	ui_tooltip = "Saturation adjustment for shadows";
 	ui_category = "Shadows";
 > = 0.0;
 uniform float shadow_brightness < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
-	ui_label = "Shadow Brightness";
+	ui_label = "Brightness";
 	ui_tooltip = "Brightness adjustment for shadows";
 	ui_category = "Shadows";
 > = 0.0;
 uniform float shadow_threshold < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
-	ui_label = "Shadow Threshold";
+	ui_label = "Threshold";
 	ui_tooltip = "Threshold for what is considered shadows";
 	ui_category = "Shadows";
 > = 0.25;
 uniform float shadow_curve_slope < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 5.0; ui_max = 10.0;
-	ui_label = "Shadow Curve Slope";
+	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to shadows is";
 	ui_category = "Shadows";
 > = 7.5;
 //Midtones
 uniform float3 midtone_tint < __UNIFORM_COLOR_FLOAT3
-	ui_label = "Midtone Tint";
+	ui_label = "Tint";
 	ui_tooltip = "Color to which midtones are tinted";
 	ui_category = "Midtones";
 > = float3(1.0, 1.0, 1.0);
 uniform float midtone_saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
-	ui_label = "Midtone Saturation";
+	ui_label = "Saturation";
 	ui_tooltip = "Saturation adjustment for midtones";
 	ui_category = "Midtones";
 > = 0.0;
 uniform float midtone_brightness < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
-	ui_label = "Midtone Brightness";
+	ui_label = "Brightness";
 	ui_tooltip = "Brightness adjustment for midtones";
 	ui_category = "Midtones";
 > = 0.0;
 //Highlights
 uniform float3 highlight_tint < __UNIFORM_COLOR_FLOAT3
-	ui_label = "Highlight Tint";
+	ui_label = "Tint";
 	ui_tooltip = "Color to which highlights are tinted";
 	ui_category = "Highlights";
-> = float3(1.0, 0.8, 0.0);
+> = float3(1.0, 0.9, 0.5);
 uniform float highlight_saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
-	ui_label = "Highlight Saturation";
+	ui_label = "Saturation";
 	ui_tooltip = "Saturation adjustment for highlights";
 	ui_category = "Highlights";
 > = 0.0;
 uniform float highlight_brightness < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
-	ui_label = "Highlight Brightness";
+	ui_label = "Brightness";
 	ui_tooltip = "Brightness adjustment for highlights";
 	ui_category = "Highlights";
 > = 0.0;
 uniform float highlight_threshold < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
-	ui_label = "Highlight Threshold";
+	ui_label = "Threshold";
 	ui_tooltip = "Threshold for what is considered highlights";
 	ui_category = "Highlights";
 > = 0.75;
 uniform float highlight_curve_slope < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 5.0; ui_max = 10.0;
-	ui_label = "Highlight Curve Slope";
+	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to highlights is";
 	ui_category = "Highlights";
 > = 7.5;

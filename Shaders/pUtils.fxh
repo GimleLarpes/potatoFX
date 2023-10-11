@@ -30,7 +30,7 @@ float clerp(float v, float t, float w)
     t = (abs(d) > PI)
         ? d - sign(d) * PI
         : t;
-    return (v * (1-w) + t * w);
+    return (t - v) * w + v;
 }
 
 

@@ -136,6 +136,7 @@ float get_weight(float v, float t, float s) //maybe faster than a normal smooths
 }
 
 
+
 float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
@@ -154,7 +155,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	
 
 	////Processing
-	//White balance calculations, do is LCh and use gel colours???
+	//White balance calculations, do in LCh and use gel colours instead of this cursedness????
 	if (color_temperature != 0.0 | color_tint != 0.0)
 	{
 		color.b = lerp(color.b, sign(color_temperature + color_tint) * 0.25, abs(color_temperature + min(color_tint, 0.0)) * 0.35); // 0.7/2
@@ -166,6 +167,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color = Oklab::Oklab_to_LCh(color);
 
 	const float relative_luminance = Oklab::Normalize(color.r);
+
 
 	////Global adjustments
 	color.g *= (1 + saturation);
@@ -202,7 +204,6 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_LCh_to_DisplayFormat(color)
 		: Oklab::LCh_to_DisplayFormat(color);
-	
 	return color.rgb;
 }
 

@@ -8,26 +8,26 @@
 #include "Oklab.fxh"
 
 //White balance
-uniform float color_temperature < __UNIFORM_SLIDER_FLOAT1
+uniform float WBTemperature < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Temperature";
     ui_tooltip = "Color temperature adjustment (Blue <-> Yellow)";
 	ui_category = "White balance";
 > = 0.0;
-uniform float color_tint < __UNIFORM_SLIDER_FLOAT1
+uniform float WBTint < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Tint";
     ui_tooltip = "Color tint adjustment (Magenta <-> Green)";
 	ui_category = "White balance";
 > = 0.0;
 //Global adjustments
-uniform float saturation < __UNIFORM_SLIDER_FLOAT1
+uniform float GlobalSaturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
     ui_tooltip = "Saturation adjustment";
 	ui_category = "Global adjustments";
 > = 0.0;
-uniform float brightness < __UNIFORM_SLIDER_FLOAT1
+uniform float GlobalBrightness < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Brightness";
 	ui_tooltip = "Brightness adjustment";
@@ -36,78 +36,78 @@ uniform float brightness < __UNIFORM_SLIDER_FLOAT1
 
 //Shadows midtones highlights
 //Shadows
-uniform float3 shadow_tint < __UNIFORM_COLOR_FLOAT3 //Use this to control shadow color
+uniform float3 ShadowTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
 	ui_tooltip = "Color to which shadows are tinted";
 	ui_category = "Shadows";
 > = float3(0.5, 0.7, 1.0);
-uniform float shadow_saturation < __UNIFORM_SLIDER_FLOAT1
+uniform float ShadowSaturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
 	ui_tooltip = "Saturation adjustment for shadows";
 	ui_category = "Shadows";
 > = 0.0;
-uniform float shadow_brightness < __UNIFORM_SLIDER_FLOAT1
+uniform float ShadowBrightness < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Brightness";
 	ui_tooltip = "Brightness adjustment for shadows";
 	ui_category = "Shadows";
 > = 0.0;
-uniform float shadow_threshold < __UNIFORM_SLIDER_FLOAT1
+uniform float ShadowThreshold < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
 	ui_label = "Threshold";
 	ui_tooltip = "Threshold for what is considered shadows";
 	ui_category = "Shadows";
 > = 0.25;
-uniform float shadow_curve_slope < __UNIFORM_SLIDER_FLOAT1
+uniform float ShadowCurveSlope < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 2.5; ui_max = 10.0;
 	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to shadows is";
 	ui_category = "Shadows";
 > = 7.5;
 //Midtones
-uniform float3 midtone_tint < __UNIFORM_COLOR_FLOAT3
+uniform float3 MidtoneTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
 	ui_tooltip = "Color to which midtones are tinted";
 	ui_category = "Midtones";
 > = float3(1.0, 1.0, 1.0);
-uniform float midtone_saturation < __UNIFORM_SLIDER_FLOAT1
+uniform float MidtoneSaturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
 	ui_tooltip = "Saturation adjustment for midtones";
 	ui_category = "Midtones";
 > = 0.0;
-uniform float midtone_brightness < __UNIFORM_SLIDER_FLOAT1
+uniform float MidtoneBrightness < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Brightness";
 	ui_tooltip = "Brightness adjustment for midtones";
 	ui_category = "Midtones";
 > = 0.0;
 //Highlights
-uniform float3 highlight_tint < __UNIFORM_COLOR_FLOAT3
+uniform float3 HighlightTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
 	ui_tooltip = "Color to which highlights are tinted";
 	ui_category = "Highlights";
 > = float3(1.0, 0.95, 0.65);
-uniform float highlight_saturation < __UNIFORM_SLIDER_FLOAT1
+uniform float HighlightSaturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
 	ui_tooltip = "Saturation adjustment for highlights";
 	ui_category = "Highlights";
 > = 0.0;
-uniform float highlight_brightness < __UNIFORM_SLIDER_FLOAT1
+uniform float HighlightBrightness < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Brightness";
 	ui_tooltip = "Brightness adjustment for highlights";
 	ui_category = "Highlights";
 > = 0.0;
-uniform float highlight_threshold < __UNIFORM_SLIDER_FLOAT1
+uniform float HighlightThreshold < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
 	ui_label = "Threshold";
 	ui_tooltip = "Threshold for what is considered highlights";
 	ui_category = "Highlights";
 > = 0.75;
-uniform float highlight_curve_slope < __UNIFORM_SLIDER_FLOAT1
+uniform float HighlightCurveSlope < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 2.5; ui_max = 10.0;
 	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to highlights is";
@@ -143,9 +143,9 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	static const float PI = 3.1415927;
 
 	//Shadows-midtones-highlighs colors, use polar coordinates because it makes tinting easier
-	static const float3 shadow_tint = Oklab::RGB_to_LCh(shadow_tint);
-	static const float3 midtone_tint = Oklab::RGB_to_LCh(midtone_tint);
-	static const float3 highlight_tint = Oklab::RGB_to_LCh(highlight_tint);
+	static const float3 ShadowTintColor = Oklab::RGB_to_LCh(ShadowTintColor);
+	static const float3 MidtoneTintColor = Oklab::RGB_to_LCh(MidtoneTintColor);
+	static const float3 HighlightTintColor = Oklab::RGB_to_LCh(HighlightTintColor);
 	
 
 	//Do all color-stuff in Oklab color space
@@ -156,13 +156,13 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Processing
 	//White balance calculations, do in LCh and lerp to gel colours instead of this cursedness????
-	//if (color_temperature != 0.0 | color_tint != 0.0)
+	//if (WBTemperature != 0.0 | WBTint != 0.0)
 	//{
-	//	color.b = lerp(color.b, sign(color_temperature + color_tint) * 0.25, abs(color_temperature + min(color_tint, 0.0)) * 0.35); // 0.7/2
+	//	color.b = lerp(color.b, sign(WBTemperature + WBTint) * 0.25, abs(WBTemperature + min(WBTint, 0.0)) * 0.35); // 0.7/2
 	//}
-	//if (color_tint != 0.0)
+	//if (WBTint != 0.0)
 	//{
-	//	color.g = lerp(color.b, sign(-color_tint)*0.25, abs(color_tint * 0.7));
+	//	color.g = lerp(color.b, sign(-WBTint)*0.25, abs(WBTint * 0.7));
 	//}
 	color = Oklab::Oklab_to_LCh(color);
 
@@ -170,33 +170,33 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 
 	////Global adjustments
-	color.g *= (1 + saturation);
-	color.r *= (1 + brightness);
+	color.g *= (1 + GlobalSaturation);
+	color.r *= (1 + GlobalBrightness);
 
 	////Shadows-midtones-highlights
 	//Shadows
-	//const float shadow_weight = get_weight(luminance_norm, shadow_threshold, -shadow_curve_slope);
+	//const float shadow_weight = get_weight(luminance_norm, ShadowThreshold, -ShadowCurveSlope);
 	//if (shadow_weight != 0.0)
 	//{
-	//	color.r *= (1 + shadow_brightness * shadow_weight);
-	//	color.g *= (1 + shadow_saturation * shadow_weight);
-	//	color.gb = lerp(color.gb, shadow_tint.gb, 5.943 * shadow_tint.g * shadow_weight);
+	//	color.r *= (1 + ShadowBrightness * shadow_weight);
+	//	color.g *= (1 + ShadowSaturation * shadow_weight);
+	//	color.gb = lerp(color.gb, ShadowTintColor.gb, 5.943 * ShadowTintColor.g * shadow_weight);
 	//}
 	//Highlights
-	//const float highlight_weight = get_weight(luminance_norm, highlight_threshold, highlight_curve_slope);
+	//const float highlight_weight = get_weight(luminance_norm, HighlightThreshold, HighlightCurveSlope);
 	//if (highlight_weight != 0.0)
 	//{
-	//	color.r *= (1 + highlight_brightness * highlight_weight);
-	//	color.g *= (1 + highlight_saturation * highlight_weight);
-	//	color.gb = lerp(color.gb, highlight_tint.gb, 5.943 * highlight_tint.g * highlight_weight);
+	//	color.r *= (1 + HighlightBrightness * highlight_weight);
+	//	color.g *= (1 + HighlightSaturation * highlight_weight);
+	//	color.gb = lerp(color.gb, HighlightTintColor.gb, 5.943 * HighlightTintColor.g * highlight_weight);
 	//}
 	//Midtones
 	//const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
 	//if (midtone_weight != 0.0)
 	//{
-	//	color.r *= (1 + midtone_brightness * midtone_weight);
-	//	color.g *= (1 + midtone_saturation * midtone_weight);
-	//	color.gb = lerp(color.gb, midtone_tint.gb, 5.943 * midtone_tint.g * midtone_weight);
+	//	color.r *= (1 + MidtoneBrightness * midtone_weight);
+	//	color.g *= (1 + MidtoneSaturation * midtone_weight);
+	//	color.gb = lerp(color.gb, MidtoneTintColor.gb, 5.943 * MidtoneTintColor.g * midtone_weight);
 	//}
 	
 	

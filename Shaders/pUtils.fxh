@@ -30,7 +30,7 @@ float clerp(float v, float t, float w)
     t = (abs(d) > PI)
         ? d - sign(d) * PI
         : t;
-    return (t - v) * w + v;
+    return (t - v) * w + v; //This gives the distance to rotation instead of going there
 }
 
 

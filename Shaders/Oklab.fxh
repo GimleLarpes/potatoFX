@@ -103,7 +103,9 @@ namespace Oklab
     float3 DisplayFormat_to_Linear(float3 c)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            c = c;
+            c = (c < 0.000001) //Avoid reshade bug
+                ? 0.000001
+                : c;
 
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
             c = PQ_to_Linear(c);
@@ -135,7 +137,9 @@ namespace Oklab
     float3 Fast_DisplayFormat_to_Linear(float3 c)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            c = c;
+            c = (c < 0.000001) //Avoid reshade bug
+                ? 0.000001
+                : c;
 
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
             c = Fast_PQ_to_Linear(c);

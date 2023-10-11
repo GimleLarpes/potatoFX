@@ -22,7 +22,7 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
 	ui_min = 2; ui_max = 16;
     ui_tooltip = "Number of colors to posterize to";
 	ui_category = "Settings";
-> = 8;
+> = 4;
 
 //Set default palettebalance to something that hopefully works for each color space
 #if BUFFER_COLOR_SPACE == 2//scRGB

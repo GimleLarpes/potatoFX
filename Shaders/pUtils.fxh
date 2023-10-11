@@ -22,5 +22,16 @@ float3 cbrt(float3 v)
 {
     return sign(v) * pow(abs(v), 0.33333333);
 }
+//--clerp
+//lerps the shortest way around a circle, assumes angles in radians in range 0-2Pi
+float clerp(float v, float t, float w)
+{   
+    const float d = v - t;
+    t = (abs(d) > PI)
+        ? d - sign(d) * PI
+        : t;
+    return (v * (1-w) + t * w);
+}
+
 
 }

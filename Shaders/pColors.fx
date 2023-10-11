@@ -23,13 +23,13 @@ uniform float color_tint < __UNIFORM_SLIDER_FLOAT1
 //Global adjustments
 uniform float saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
-	ui_label = "Global Saturation";
+	ui_label = "Saturation";
     ui_tooltip = "Saturation adjustment";
 	ui_category = "Global adjustments";
 > = 0.0;
 uniform float brightness < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 2.0;
-	ui_label = "Global Brightness";
+	ui_label = "Brightness";
 	ui_tooltip = "Brightness adjustment";
 	ui_category = "Global adjustments";
 > = 0.0;
@@ -40,7 +40,7 @@ uniform float3 shadow_tint < __UNIFORM_COLOR_FLOAT3 //Use this to control shadow
 	ui_label = "Tint";
 	ui_tooltip = "Color to which shadows are tinted";
 	ui_category = "Shadows";
-> = float3(0.5, 0.7, 1.0);
+> = float3(0.0, 0.4, 1.0);
 uniform float shadow_saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
@@ -177,7 +177,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + shadow_brightness * shadow_weight);
-		color.g *= (1 + shadow_saturation * shadow_weight);
+		color.g *= (1 + (shadow_saturation + shadow_tint.g) * shadow_weight);
 		color.b = pUtils::clerp(color.b, shadow_tint.b, shadow_tint.g * shadow_weight);
 	}
 
@@ -186,7 +186,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	if (highlight_weight != 0.0)
 	{
 		color.r *= (1 + highlight_brightness * highlight_weight);
-		color.g *= (1 + highlight_saturation * highlight_weight);
+		color.g *= (1 + (highlight_saturation + highlight_tint.g) * highlight_weight);
 		color.b = pUtils::clerp(color.b, highlight_tint.b, highlight_tint.g * highlight_weight);
 	}
 
@@ -195,7 +195,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	if (midtone_weight != 0.0)
 	{
 		color.r *= (1 + midtone_brightness * midtone_weight);
-		color.g *= (1 + midtone_saturation * midtone_weight);
+		color.g *= (1 + (midtone_saturation + highlight_tint.g) * midtone_weight);
 		color.b = pUtils::clerp(color.b, midtone_tint.b, midtone_tint.g * midtone_weight);
 	}
 	

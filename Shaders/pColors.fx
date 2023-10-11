@@ -154,7 +154,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	
 
 	////Processing
-	//White balance calculations
+	//White balance calculations, do is LCh and use gel colours???
 	if (color_temperature != 0.0 | color_tint != 0.0)
 	{
 		color.b = lerp(color.b, sign(color_temperature + color_tint) * 0.25, abs(color_temperature + min(color_tint, 0.0)) * 0.35); // 0.7/2
@@ -173,31 +173,36 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	const float shadow_weight = get_weight(relative_luminance, shadow_threshold, -shadow_curve_slope);
+	//const float shadow_weight = get_weight(relative_luminance, shadow_threshold, -shadow_curve_slope);
+	float shadow_weight=1.0;//DEBUG
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + shadow_brightness * shadow_weight);
 		color.g *= (1 + (shadow_saturation + shadow_tint.g) * shadow_weight);
-		color.b = pUtils::clerp(color.b, shadow_tint.b, shadow_tint.g * shadow_weight);
+		color.b = pUtils::clerp(color.b, shadow_tint.b, shadow_tint.g * shadow_weight); // Issue is that this doesn't make color.b the same hue as shadow tint even when it should
 	}
+	color.r *= (1 + shadow_brightness * shadow_weight);
+	color.g *= (1 + (shadow_saturation + shadow_tint.g) * shadow_weight);
+	color.b = pUtils::clerp(color.b, shadow_tint.b, shadow_tint.g * shadow_weight);
+	color.b = shadow_tint.b;
 
 	//Highlights
 	const float highlight_weight = get_weight(relative_luminance, highlight_threshold, highlight_curve_slope);
-	if (highlight_weight != 0.0)
-	{
-		color.r *= (1 + highlight_brightness * highlight_weight);
-		color.g *= (1 + (highlight_saturation + highlight_tint.g) * highlight_weight);
-		color.b = pUtils::clerp(color.b, highlight_tint.b, highlight_tint.g * highlight_weight);
-	}
+	//if (highlight_weight != 0.0)
+	//{
+	//	color.r *= (1 + highlight_brightness * highlight_weight);
+	//	color.g *= (1 + (highlight_saturation + highlight_tint.g) * highlight_weight);
+	//	color.b = pUtils::clerp(color.b, highlight_tint.b, highlight_tint.g * highlight_weight);
+	//}
 
 	//Midtones
 	const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
-	if (midtone_weight != 0.0)
-	{
-		color.r *= (1 + midtone_brightness * midtone_weight);
-		color.g *= (1 + (midtone_saturation + highlight_tint.g) * midtone_weight);
-		color.b = pUtils::clerp(color.b, midtone_tint.b, midtone_tint.g * midtone_weight);
-	}
+	//if (midtone_weight != 0.0)
+	//{
+	//	color.r *= (1 + midtone_brightness * midtone_weight);
+	//	color.g *= (1 + (midtone_saturation + highlight_tint.g) * midtone_weight);
+	//	color.b = pUtils::clerp(color.b, midtone_tint.b, midtone_tint.g * midtone_weight);
+	//}
 	
 	
 

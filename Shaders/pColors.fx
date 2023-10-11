@@ -28,7 +28,7 @@ uniform float saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Global adjustments";
 > = 0.0;
 uniform float brightness < __UNIFORM_SLIDER_FLOAT1
-	ui_min = -1.0; ui_max = 2.0;
+	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Brightness";
 	ui_tooltip = "Brightness adjustment";
 	ui_category = "Global adjustments";
@@ -40,7 +40,7 @@ uniform float3 shadow_tint < __UNIFORM_COLOR_FLOAT3 //Use this to control shadow
 	ui_label = "Tint";
 	ui_tooltip = "Color to which shadows are tinted";
 	ui_category = "Shadows";
-> = float3(0.0, 0.4, 1.0);
+> = float3(0.5, 0.7, 1.0);
 uniform float shadow_saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
@@ -60,7 +60,7 @@ uniform float shadow_threshold < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Shadows";
 > = 0.25;
 uniform float shadow_curve_slope < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 5.0; ui_max = 10.0;
+	ui_min = 2.5; ui_max = 10.0;
 	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to shadows is";
 	ui_category = "Shadows";
@@ -88,7 +88,7 @@ uniform float3 highlight_tint < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
 	ui_tooltip = "Color to which highlights are tinted";
 	ui_category = "Highlights";
-> = float3(1.0, 0.9, 0.5);
+> = float3(1.0, 0.95, 0.65);
 uniform float highlight_saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
@@ -108,11 +108,11 @@ uniform float highlight_threshold < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Highlights";
 > = 0.75;
 uniform float highlight_curve_slope < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 5.0; ui_max = 10.0;
+	ui_min = 2.5; ui_max = 10.0;
 	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to highlights is";
 	ui_category = "Highlights";
-> = 7.5;
+> = 5.0;
 
 
 
@@ -178,7 +178,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	{
 		color.r *= (1 + shadow_brightness * shadow_weight);
 		color.g *= (1 + shadow_saturation * shadow_weight);
-		color.b = lerp(color.b, shadow_tint.b, 2 * PI * shadow_tint.g * shadow_weight);
+		color.gb = lerp(color.gb, shadow_tint.gb, 5.943 * shadow_tint.g * shadow_weight);
 	}
 	//Highlights
 	const float highlight_weight = get_weight(relative_luminance, highlight_threshold, highlight_curve_slope);
@@ -186,7 +186,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	{
 		color.r *= (1 + highlight_brightness * highlight_weight);
 		color.g *= (1 + highlight_saturation * highlight_weight);
-		color.b = lerp(color.b, highlight_tint.b, 2 * PI * highlight_tint.g * highlight_weight);
+		color.gb = lerp(color.gb, highlight_tint.gb, 5.943 * highlight_tint.g * highlight_weight);
 	}
 	//Midtones
 	const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
@@ -194,7 +194,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	{
 		color.r *= (1 + midtone_brightness * midtone_weight);
 		color.g *= (1 + midtone_saturation * midtone_weight);
-		color.b = lerp(color.b, midtone_tint.b, 2 * PI * midtone_tint.g * midtone_weight);
+		color.gb = lerp(color.gb, midtone_tint.gb, 5.943 * midtone_tint.g * midtone_weight);
 	}
 	
 	

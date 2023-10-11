@@ -155,55 +155,56 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	
 
 	////Processing
-	//White balance calculations, do in LCh and use gel colours instead of this cursedness????
-	if (color_temperature != 0.0 | color_tint != 0.0)
-	{
-		color.b = lerp(color.b, sign(color_temperature + color_tint) * 0.25, abs(color_temperature + min(color_tint, 0.0)) * 0.35); // 0.7/2
-	}
-	if (color_tint != 0.0)
-	{
-		color.g = lerp(color.b, sign(-color_tint)*0.25, abs(color_tint * 0.7));
-	}
+	//White balance calculations, do in LCh and lerp to gel colours instead of this cursedness????
+	//if (color_temperature != 0.0 | color_tint != 0.0)
+	//{
+	//	color.b = lerp(color.b, sign(color_temperature + color_tint) * 0.25, abs(color_temperature + min(color_tint, 0.0)) * 0.35); // 0.7/2
+	//}
+	//if (color_tint != 0.0)
+	//{
+	//	color.g = lerp(color.b, sign(-color_tint)*0.25, abs(color_tint * 0.7));
+	//}
 	color = Oklab::Oklab_to_LCh(color);
 
-	const float relative_luminance = Oklab::Normalize(color.r);
+	//const float relative_luminance = Oklab::Normalize(color.r);
 
 
 	////Global adjustments
-	color.g *= (1 + saturation);
-	color.r *= (1 + brightness);
+	//color.g *= (1 + saturation);
+	//color.r *= (1 + brightness);
 
 	////Shadows-midtones-highlights
 	//Shadows
-	const float shadow_weight = get_weight(relative_luminance, shadow_threshold, -shadow_curve_slope);
-	if (shadow_weight != 0.0)
-	{
-		color.r *= (1 + shadow_brightness * shadow_weight);
-		color.g *= (1 + shadow_saturation * shadow_weight);
-		color.gb = lerp(color.gb, shadow_tint.gb, 5.943 * shadow_tint.g * shadow_weight);
-	}
+	//const float shadow_weight = get_weight(relative_luminance, shadow_threshold, -shadow_curve_slope);
+	//if (shadow_weight != 0.0)
+	//{
+	//	color.r *= (1 + shadow_brightness * shadow_weight);
+	//	color.g *= (1 + shadow_saturation * shadow_weight);
+	//	color.gb = lerp(color.gb, shadow_tint.gb, 5.943 * shadow_tint.g * shadow_weight);
+	//}
 	//Highlights
-	const float highlight_weight = get_weight(relative_luminance, highlight_threshold, highlight_curve_slope);
-	if (highlight_weight != 0.0)
-	{
-		color.r *= (1 + highlight_brightness * highlight_weight);
-		color.g *= (1 + highlight_saturation * highlight_weight);
-		color.gb = lerp(color.gb, highlight_tint.gb, 5.943 * highlight_tint.g * highlight_weight);
-	}
+	//const float highlight_weight = get_weight(relative_luminance, highlight_threshold, highlight_curve_slope);
+	//if (highlight_weight != 0.0)
+	//{
+	//	color.r *= (1 + highlight_brightness * highlight_weight);
+	//	color.g *= (1 + highlight_saturation * highlight_weight);
+	//	color.gb = lerp(color.gb, highlight_tint.gb, 5.943 * highlight_tint.g * highlight_weight);
+	//}
 	//Midtones
-	const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
-	if (midtone_weight != 0.0)
-	{
-		color.r *= (1 + midtone_brightness * midtone_weight);
-		color.g *= (1 + midtone_saturation * midtone_weight);
-		color.gb = lerp(color.gb, midtone_tint.gb, 5.943 * midtone_tint.g * midtone_weight);
-	}
+	//const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
+	//if (midtone_weight != 0.0)
+	//{
+	//	color.r *= (1 + midtone_brightness * midtone_weight);
+	//	color.g *= (1 + midtone_saturation * midtone_weight);
+	//	color.gb = lerp(color.gb, midtone_tint.gb, 5.943 * midtone_tint.g * midtone_weight);
+	//}
 	
 	
 
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_LCh_to_DisplayFormat(color)
 		: Oklab::LCh_to_DisplayFormat(color);
+	
 	return color.rgb;
 }
 

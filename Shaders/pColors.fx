@@ -20,6 +20,19 @@ uniform float color_tint < __UNIFORM_SLIDER_FLOAT1
     ui_tooltip = "Color tint adjustment (Magenta <-> Green)";
 	ui_category = "White balance";
 > = 0.0;
+//Global adjustments
+uniform float saturation < __UNIFORM_SLIDER_FLOAT1
+	ui_min = -1.0; ui_max = 1.0;
+	ui_label = "Global Saturation";
+    ui_tooltip = "Saturation adjustment";
+	ui_category = "Global adjustments";
+> = 0.0;
+uniform float brightness < __UNIFORM_SLIDER_FLOAT1
+	ui_min = -1.0; ui_max = 2.0;
+	ui_label = "Global Brightness";
+	ui_tooltip = "Brightness adjustment";
+	ui_category = "Global adjustments";
+> = 0.0;
 
 //Shadows midtones highlights
 //Shadows
@@ -27,7 +40,7 @@ uniform float3 shadow_tint < __UNIFORM_COLOR_FLOAT3 //Use this to control shadow
 	ui_label = "Shadow Tint";
 	ui_tooltip = "Color to which shadows are tinted";
 	ui_category = "Shadows";
-> = float3(0.5, 0.7, 1.0);
+> = float3(0.0, 0.4, 1.0);
 uniform float shadow_saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Shadow Saturation";
@@ -47,11 +60,11 @@ uniform float shadow_threshold < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Shadows";
 > = 0.25;
 uniform float shadow_curve_slope < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.25; ui_max = 0.75;
+	ui_min = 5.0; ui_max = 10.0;
 	ui_label = "Shadow Curve Slope";
 	ui_tooltip = "How steep the transition to shadows is";
 	ui_category = "Shadows";
-> = 0.5;
+> = 7.5;
 //Midtones
 uniform float3 midtone_tint < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Midtone Tint";
@@ -75,7 +88,7 @@ uniform float3 highlight_tint < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Highlight Tint";
 	ui_tooltip = "Color to which highlights are tinted";
 	ui_category = "Highlights";
-> = float3(1.0, 1.0, 1.0);
+> = float3(1.0, 0.8, 0.0);
 uniform float highlight_saturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Highlight Saturation";
@@ -95,11 +108,11 @@ uniform float highlight_threshold < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Highlights";
 > = 0.75;
 uniform float highlight_curve_slope < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.25; ui_max = 0.75;
+	ui_min = 5.0; ui_max = 10.0;
 	ui_label = "Highlight Curve Slope";
 	ui_tooltip = "How steep the transition to highlights is";
 	ui_category = "Highlights";
-> = 0.5;
+> = 7.5;
 
 
 
@@ -110,6 +123,17 @@ uniform bool UseApproximateTransforms <
     ui_tooltip = "Use less accurate approximations instead of the full transform functions";
 	ui_category = "Performance";
 > = false;
+
+
+float get_weight(float v, float t, float s) //maybe faster than a normal smoothstep
+{
+	v = (v - t) * s;
+	return (v > 1)
+		? 1.0
+		: (v < 0.0)
+			? 0.0
+			: v * v * (3 - 2 * v);
+}
 
 
 float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
@@ -130,7 +154,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	
 
 	////Processing
-	//White balance calculations -- DO THIS IN LCh INSTEAD!!!
+	//White balance calculations
 	if (color_temperature != 0.0 | color_tint != 0.0)
 	{
 		color.b = lerp(color.b, sign(color_temperature + color_tint) * 0.25, abs(color_temperature + min(color_tint, 0.0)) * 0.35); // 0.7/2
@@ -143,26 +167,38 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	const float relative_luminance = Oklab::Normalize(color.r);
 
+	////Global adjustments
+	color.g *= (1 + saturation);
+	color.r *= (1 + brightness);
+
 	////Shadows-midtones-highlights
 	//Shadows
-	const float shadow_weight = 1.0;//Curve function, what to use?
-	if shadow_weight != 0.0
+	const float shadow_weight = get_weight(relative_luminance, shadow_threshold, -shadow_curve_slope);
+	if (shadow_weight != 0.0)
 	{
-		color.r *= (1+shadow_brightness) * shadow_weight;
-		color.g *= (1+shadow_saturation) * shadow_weight;
-		color.b = pUtils::clerp(color.b, shadow_tint.b, shadow_tint.g) * shadow_weight;
+		color.r *= (1 + shadow_brightness * shadow_weight);
+		color.g *= (1 + shadow_saturation * shadow_weight);
+		color.b = pUtils::clerp(color.b, shadow_tint.b, shadow_tint.g * shadow_weight);
 	}
-	
-
 
 	//Highlights
-	//
+	const float highlight_weight = get_weight(relative_luminance, highlight_threshold, highlight_curve_slope);
+	if (highlight_weight != 0.0)
+	{
+		color.r *= (1 + highlight_brightness * highlight_weight);
+		color.g *= (1 + highlight_saturation * highlight_weight);
+		color.b = pUtils::clerp(color.b, highlight_tint.b, highlight_tint.g * highlight_weight);
+	}
 
 	//Midtones
-	//Midtones are all areas that aren't shadows or midtones (subtract 1 by their weigts?)
-
-
-
+	const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
+	if (midtone_weight != 0.0)
+	{
+		color.r *= (1 + midtone_brightness * midtone_weight);
+		color.g *= (1 + midtone_saturation * midtone_weight);
+		color.b = pUtils::clerp(color.b, midtone_tint.b, midtone_tint.g * midtone_weight);
+	}
+	
 	
 
 	color = (UseApproximateTransforms)

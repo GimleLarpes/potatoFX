@@ -169,13 +169,17 @@ namespace Oklab
             return c;
     }
     
-    //Utility functions for Lab
-    float3 SaturateLCh(float3 c)
+    //Utility functions for Oklab
+    float3 Saturate_LCh(float3 c)
     {
-        const float d = max(sqrt(c.g * c.g + c.b * c.b), 1.0);
-        c.g = c.g / d;
-        c.b = c.b / d;
+        const float d = max(length(c.yz), 1.0);
+        c.y = c.y / d;
+        c.z = c.z / d;
         return c;
+    }
+    float get_Oklab_Chromacity(float3 c)
+    {
+        return length(c.yz);
     }
 
     //Utility functions for HDR

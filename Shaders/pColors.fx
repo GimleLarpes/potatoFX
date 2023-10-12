@@ -109,7 +109,7 @@ uniform float3 MidtoneTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
 	ui_tooltip = "Color to which midtones are tinted";
 	ui_category = "Midtones";
-> = float3(1.0, 1.0, 1.0);
+> = float3(0.99, 1.0, 0.96);
 uniform float MidtoneSaturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";

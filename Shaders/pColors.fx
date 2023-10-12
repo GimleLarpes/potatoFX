@@ -9,13 +9,13 @@
 
 //White balance
 uniform float WBTemperature < __UNIFORM_SLIDER_FLOAT1
-	ui_min = -1.0; ui_max = 1.0;
+	ui_min = -0.5; ui_max = 0.5;
 	ui_label = "Temperature";
     ui_tooltip = "Color temperature adjustment (Blue <-> Yellow)";
 	ui_category = "White balance";
 > = 0.0;
 uniform float WBTint < __UNIFORM_SLIDER_FLOAT1
-	ui_min = -1.0; ui_max = 1.0;
+	ui_min = -0.5; ui_max = 0.5;
 	ui_label = "Tint";
     ui_tooltip = "Color tint adjustment (Magenta <-> Green)";
 	ui_category = "White balance";
@@ -155,15 +155,14 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	
 
 	////Processing
-	//White balance calculations, do in LCh and lerp to gel colours instead of this cursedness????
-	//if (WBTemperature != 0.0 | WBTint != 0.0)
-	//{
-	//	color.b = lerp(color.b, sign(WBTemperature + WBTint) * 0.25, abs(WBTemperature + min(WBTint, 0.0)) * 0.35); // 0.7/2
-	//}
-	//if (WBTint != 0.0)
-	//{
-	//	color.g = lerp(color.b, sign(-WBTint)*0.25, abs(WBTint * 0.7));
-	//}
+	//White balance calculations TRY TO MAKE IT WORK IN LAB otherwise, do in LCh and lerp to gel colours instead of this cursedness????
+	if (WBTemperature != 0.0 | WBTint != 0.0)
+	{
+		color.g = color.g - WBTint;
+		color.b = (WBTint < 0)
+			? color.b + WBTemperature + WBTint
+			: color.b + WBTemperature;
+	}
 	color = Oklab::Oklab_to_LCh(color);
 
 	//const float luminance_norm = Oklab::Normalize(color.r);

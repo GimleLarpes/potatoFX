@@ -35,6 +35,45 @@ uniform float GlobalBrightness < __UNIFORM_SLIDER_FLOAT1
 > = 0.0;
 
 //Shadows midtones highlights
+//Curve default values
+#if BUFFER_COLOR_SPACE == 2		//scRGB
+    #undef SHADOW_CT
+	#undef SHADOW_CS
+	#undef HIGHLIGHT_CT
+	#undef HIGHLIGHT_CS
+	#define SHADOW_CT 0.1
+	#define SHADOW_CS 7.5
+	#define HIGHLIGHT_CT 0.15
+	#define HIGHLIGHT_CS 7.5
+#elif BUFFER_COLOR_SPACE == 3	//HDR10 ST2084
+    #undef SHADOW_CT
+	#undef SHADOW_CS
+	#undef HIGHLIGHT_CT
+	#undef HIGHLIGHT_CS
+	#define SHADOW_CT 0.03
+	#define SHADOW_CS 7.5
+	#define HIGHLIGHT_CT 0.05
+	#define HIGHLIGHT_CS 7.5
+#elif BUFFER_COLOR_SPACE == 4 	//HDR10 HLG
+    #undef SHADOW_CT
+	#undef SHADOW_CS
+	#undef HIGHLIGHT_CT
+	#undef HIGHLIGHT_CS
+	#define SHADOW_CT 0.05
+	#define SHADOW_CS 7.5
+	#define HIGHLIGHT_CT 0.1
+	#define HIGHLIGHT_CS 7.5
+#else 							//Assume SDR
+	#undef SHADOW_CT
+	#undef SHADOW_CS
+	#undef HIGHLIGHT_CT
+	#undef HIGHLIGHT_CS
+	#define SHADOW_CT 0.25
+	#define SHADOW_CS 7.5
+	#define HIGHLIGHT_CT 0.75
+	#define HIGHLIGHT_CS 5.0
+#endif
+
 //Shadows
 uniform float3 ShadowTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
@@ -58,13 +97,13 @@ uniform float ShadowThreshold < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Threshold";
 	ui_tooltip = "Threshold for what is considered shadows";
 	ui_category = "Shadows";
-> = 0.25;
+> = SHADOW_CT;
 uniform float ShadowCurveSlope < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 2.5; ui_max = 10.0;
 	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to shadows is";
 	ui_category = "Shadows";
-> = 5.0;
+> = SHADOW_CS;
 //Midtones
 uniform float3 MidtoneTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
@@ -106,14 +145,13 @@ uniform float HighlightThreshold < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Threshold";
 	ui_tooltip = "Threshold for what is considered highlights";
 	ui_category = "Highlights";
-> = 0.75;
+> = HIGHLIGHT_CT;
 uniform float HighlightCurveSlope < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 2.5; ui_max = 10.0;
 	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to highlights is";
 	ui_category = "Highlights";
-> = 5.0;
-
+> = HIGHLIGHT_CS;
 
 
 //Performance
@@ -155,7 +193,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.g = color.g - WBTint;
 		color.b = (WBTint < 0)
 			? color.b + WBTemperature + WBTint
-			: color.b + WBTemperature; //Weird green tint in shadows when pushed to extreme yellows
+			: color.b + WBTemperature;
 	}
 	const float luminance_norm = Oklab::Normalize(color.r);
 

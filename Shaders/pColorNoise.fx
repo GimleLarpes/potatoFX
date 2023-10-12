@@ -48,7 +48,9 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 	return color.rgb;
 }
 
-technique ColorNoise <ui_tooltip = "Generates gaussian chroma noise to simulate amplifier noise in digital cameras.";>
+technique ColorNoise <ui_tooltip = 
+"Generates gaussian chroma noise to simulate amplifier noise in digital cameras.\n\n"
+"(HDR compatible)                                     - Written by Gimle Larpes"
 {
 	pass
 	{

@@ -266,7 +266,7 @@ float3 ApplyLUT(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Targ
 
 technique Colors <ui_tooltip = 
 "Shader with tools for advanced color correction and grading.\n\n"
-"(HDR compatible)                    Written by Gimle Larpes";>
+"(HDR compatible)                  - Written by Gimle Larpes";>
 {
 	pass
 	{

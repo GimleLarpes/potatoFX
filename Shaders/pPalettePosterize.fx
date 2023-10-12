@@ -149,7 +149,9 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	return color.rgb;
 }
 
-technique PalettePosterize <ui_tooltip = "Posterizes an image to a custom color palette.";>
+technique PalettePosterize <ui_tooltip = 
+"Posterizes an image to a custom color palette.\n\n"
+"(HDR compatible)    - Written by Gimle Larpes"
 {
 	pass
 	{

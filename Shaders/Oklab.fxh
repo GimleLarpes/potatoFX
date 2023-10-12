@@ -169,6 +169,15 @@ namespace Oklab
             return c;
     }
     
+    //Utility functions for Lab
+    float3 SaturateLCh(float3 c)
+    {
+        const float d = max(sqrt(c.g * c.g + c.b * c.b), 1.0);
+        c.g = c.g / d;
+        c.b = c.b / d;
+        return c;
+    }
+
     //Utility functions for HDR
     float Normalize(float v)
     {   

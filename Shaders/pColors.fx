@@ -50,18 +50,18 @@ uniform float GlobalBrightness < __UNIFORM_SLIDER_FLOAT1
 	#undef SHADOW_CS
 	#undef HIGHLIGHT_CT
 	#undef HIGHLIGHT_CS
-	#define SHADOW_CT 0.03
+	#define SHADOW_CT 0.01
 	#define SHADOW_CS 7.5
-	#define HIGHLIGHT_CT 0.05
+	#define HIGHLIGHT_CT 0.02
 	#define HIGHLIGHT_CS 7.5
 #elif BUFFER_COLOR_SPACE == 4 	//HDR10 HLG
     #undef SHADOW_CT
 	#undef SHADOW_CS
 	#undef HIGHLIGHT_CT
 	#undef HIGHLIGHT_CS
-	#define SHADOW_CT 0.05
+	#define SHADOW_CT 0.08
 	#define SHADOW_CS 7.5
-	#define HIGHLIGHT_CT 0.1
+	#define HIGHLIGHT_CT 0.12
 	#define HIGHLIGHT_CS 7.5
 #else 							//Assume SDR
 	#undef SHADOW_CT
@@ -127,7 +127,7 @@ uniform float3 HighlightTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
 	ui_tooltip = "Color to which highlights are tinted";
 	ui_category = "Highlights";
-> = float3(1.0, 0.95, 0.65);
+> = float3(1.0, 0.96, 0.78);
 uniform float HighlightSaturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
@@ -153,7 +153,6 @@ uniform float HighlightCurveSlope < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Highlights";
 > = HIGHLIGHT_CS;
 
-
 //Performance
 uniform bool UseApproximateTransforms <
 	ui_type = "bool";
@@ -161,6 +160,7 @@ uniform bool UseApproximateTransforms <
     ui_tooltip = "Use less accurate approximations instead of the full transform functions";
 	ui_category = "Performance";
 > = false;
+
 
 
 float get_weight(float v, float t, float s) //value, threshold, curve slope

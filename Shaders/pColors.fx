@@ -166,11 +166,11 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	//Shadows-midtones-highlights colors
 	static const float3 ShadowTintColor = Oklab::RGB_to_Oklab(ShadowTintColor) * (1 + GlobalSaturation);
-	static const float ShadowTintColorC = Oklab::Oklab_to_LCh(ShadowTintColor.g);
+	static const float ShadowTintColorC = Oklab::get_Oklab_Chromacity(ShadowTintColor);
 	static const float3 MidtoneTintColor = Oklab::RGB_to_Oklab(MidtoneTintColor) * (1 + GlobalSaturation);
-	static const float MidtoneTintColorC = Oklab::Oklab_to_LCh(MidtoneTintColor.g);
+	static const float MidtoneTintColorC = Oklab::get_Oklab_Chromacity(MidtoneTintColor);
 	static const float3 HighlightTintColor = Oklab::RGB_to_Oklab(HighlightTintColor) * (1 + GlobalSaturation);
-	static const float HighlightTintColorC = Oklab::Oklab_to_LCh(HighlightTintColor.g);
+	static const float HighlightTintColorC = Oklab::get_Oklab_Chromacity(HighlightTintColor);
 
 	////Shadows-midtones-highlights
 	//Shadows

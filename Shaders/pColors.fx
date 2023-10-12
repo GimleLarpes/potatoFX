@@ -64,7 +64,7 @@ uniform float ShadowCurveSlope < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to shadows is";
 	ui_category = "Shadows";
-> = 7.5;
+> = 5.0;
 //Midtones
 uniform float3 MidtoneTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
@@ -125,7 +125,7 @@ uniform bool UseApproximateTransforms <
 > = false;
 
 
-float get_weight(float v, float t, float s) //maybe faster than a normal smoothstep
+float get_weight(float v, float t, float s) //value, threshold, curve slope
 {
 	v = (v - t) * s;
 	return (v > 1)
@@ -142,12 +142,6 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
 	static const float PI = 3.1415927;
 
-	//Shadows-midtones-highlighs colors, use polar coordinates because it makes tinting easier
-	static const float3 ShadowTintColor = Oklab::RGB_to_LCh(ShadowTintColor);
-	static const float3 MidtoneTintColor = Oklab::RGB_to_LCh(MidtoneTintColor);
-	static const float3 HighlightTintColor = Oklab::RGB_to_LCh(HighlightTintColor);
-	
-
 	//Do all color-stuff in Oklab color space
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Oklab(color)
@@ -155,54 +149,60 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	
 
 	////Processing
-	//White balance calculations TRY TO MAKE IT WORK IN LAB otherwise, do in LCh and lerp to gel colours instead of this cursedness????
+	//White balance calculations
 	if (WBTemperature != 0.0 | WBTint != 0.0)
 	{
 		color.g = color.g - WBTint;
 		color.b = (WBTint < 0)
 			? color.b + WBTemperature + WBTint
-			: color.b + WBTemperature;
+			: color.b + WBTemperature; //Weird green tint in shadows when pushed to extreme yellows
 	}
-	color = Oklab::Oklab_to_LCh(color);
+	const float luminance_norm = Oklab::Normalize(color.r);
 
-	//const float luminance_norm = Oklab::Normalize(color.r);
-
-
-	////Global adjustments
-	color.g *= (1 + GlobalSaturation);
+	//Global adjustments
 	color.r *= (1 + GlobalBrightness);
+	color.gb *= (1 + GlobalSaturation);
+
+
+	//Shadows-midtones-highlights colors
+	static const float3 ShadowTintColor = Oklab::RGB_to_Oklab(ShadowTintColor) * (1 + GlobalSaturation);
+	static const float ShadowTintColorC = Oklab::Oklab_to_LCh(ShadowTintColor.g);
+	static const float3 MidtoneTintColor = Oklab::RGB_to_Oklab(MidtoneTintColor) * (1 + GlobalSaturation);
+	static const float MidtoneTintColorC = Oklab::Oklab_to_LCh(MidtoneTintColor.g);
+	static const float3 HighlightTintColor = Oklab::RGB_to_Oklab(HighlightTintColor) * (1 + GlobalSaturation);
+	static const float HighlightTintColorC = Oklab::Oklab_to_LCh(HighlightTintColor.g);
 
 	////Shadows-midtones-highlights
 	//Shadows
-	//const float shadow_weight = get_weight(luminance_norm, ShadowThreshold, -ShadowCurveSlope);
-	//if (shadow_weight != 0.0)
-	//{
-	//	color.r *= (1 + ShadowBrightness * shadow_weight);
-	//	color.g *= (1 + ShadowSaturation * shadow_weight);
-	//	color.gb = lerp(color.gb, ShadowTintColor.gb, 5.943 * ShadowTintColor.g * shadow_weight);
-	//}
+	const float shadow_weight = get_weight(luminance_norm, ShadowThreshold, -ShadowCurveSlope);
+	if (shadow_weight != 0.0)
+	{
+		color.r *= (1 + ShadowBrightness * shadow_weight);
+		color.g = lerp(color.g, ShadowTintColor.g + (1 - ShadowTintColorC) * color.g, shadow_weight) * (1 + ShadowSaturation * shadow_weight);
+		color.b = lerp(color.b, ShadowTintColor.b + (1 - ShadowTintColorC) * color.b, shadow_weight) * (1 + ShadowSaturation * shadow_weight);
+	}
 	//Highlights
-	//const float highlight_weight = get_weight(luminance_norm, HighlightThreshold, HighlightCurveSlope);
-	//if (highlight_weight != 0.0)
-	//{
-	//	color.r *= (1 + HighlightBrightness * highlight_weight);
-	//	color.g *= (1 + HighlightSaturation * highlight_weight);
-	//	color.gb = lerp(color.gb, HighlightTintColor.gb, 5.943 * HighlightTintColor.g * highlight_weight);
-	//}
+	const float highlight_weight = get_weight(luminance_norm, HighlightThreshold, HighlightCurveSlope);
+	if (highlight_weight != 0.0)
+	{
+		color.r *= (1 + HighlightBrightness * highlight_weight);
+		color.g = lerp(color.g, HighlightTintColor.g + (1 - HighlightTintColorC) * color.g, highlight_weight) * (1 + HighlightSaturation * highlight_weight);
+		color.b = lerp(color.b, HighlightTintColor.b + (1 - HighlightTintColorC) * color.b, highlight_weight) * (1 + HighlightSaturation * highlight_weight);
+	}
 	//Midtones
-	//const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
-	//if (midtone_weight != 0.0)
-	//{
-	//	color.r *= (1 + MidtoneBrightness * midtone_weight);
-	//	color.g *= (1 + MidtoneSaturation * midtone_weight);
-	//	color.gb = lerp(color.gb, MidtoneTintColor.gb, 5.943 * MidtoneTintColor.g * midtone_weight);
-	//}
+	const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
+	if (midtone_weight != 0.0)
+	{
+		color.r *= (1 + MidtoneBrightness * midtone_weight);
+		color.g = lerp(color.g, MidtoneTintColor.g + (1 - MidtoneTintColorC) * color.g, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
+		color.b = lerp(color.b, MidtoneTintColor.b + (1 - MidtoneTintColorC) * color.b, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
+	}
 	
 	
 
 	color = (UseApproximateTransforms)
-		? Oklab::Fast_LCh_to_DisplayFormat(color)
-		: Oklab::LCh_to_DisplayFormat(color);
+		? Oklab::Fast_Oklab_to_DisplayFormat(color)
+		: Oklab::Oklab_to_DisplayFormat(color);
 	
 	return color.rgb;
 }

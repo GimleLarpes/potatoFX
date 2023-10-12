@@ -25,36 +25,26 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
 > = 4;
 
 //Set default palettebalance to something that hopefully works for each color space
-#if BUFFER_COLOR_SPACE == 2//scRGB
-    uniform float PaletteBalance < __UNIFORM_SLIDER_FLOAT1
-	ui_label = "Palette Balance (adjust if in HDR)";
-	ui_min = 0.01; ui_max = 2.0;
-    ui_tooltip = "Adjusts thresholds for color palette";
-	ui_category = "Settings";
-> = 0.125;
-#elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-    uniform float PaletteBalance < __UNIFORM_SLIDER_FLOAT1
-	ui_label = "Palette Balance (adjust if in HDR)";
-	ui_min = 0.01; ui_max = 2.0;
-    ui_tooltip = "Adjusts thresholds for color palette";
-	ui_category = "Settings";
-> = 0.01;
-#elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-    uniform float PaletteBalance < __UNIFORM_SLIDER_FLOAT1
-	ui_label = "Palette Balance (adjust if in HDR)";
-	ui_min = 0.01; ui_max = 2.0;
-    ui_tooltip = "Adjusts thresholds for color palette";
-	ui_category = "Settings";
-> = 0.1;
-#else //Assume SDR, sRGB
-    uniform float PaletteBalance < __UNIFORM_SLIDER_FLOAT1
-	ui_label = "Palette Balance (adjust if in HDR)";
-	ui_min = 0.01; ui_max = 2.0;
-    ui_tooltip = "Adjusts thresholds for color palette";
-	ui_category = "Settings";
-> = 1.0;
+#if BUFFER_COLOR_SPACE == 2		//scRGB
+	#undef DEFAULT_PB
+	#define DEFAULT_PB 0.125
+#elif BUFFER_COLOR_SPACE == 3	//HDR10 ST2084
+	#undef DEFAULT_PB
+	#define DEFAULT_PB 0.01
+#elif BUFFER_COLOR_SPACE == 4 	//HDR10 HLG
+	#undef DEFAULT_PB
+	#define DEFAULT_PB 0.1
+#else 							//Assume SDR, sRGB
+	#undef DEFAULT_PB
+	#define DEFAULT_PB 1.0
 #endif
 
+uniform float PaletteBalance < __UNIFORM_SLIDER_FLOAT1
+	ui_label = "Palette Balance (adjust if in HDR)";
+	ui_min = 0.01; ui_max = 2.0;
+    ui_tooltip = "Adjusts thresholds for color palette";
+	ui_category = "Settings";
+> = DEFAULT_PB;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Dithering";
 	ui_min = 0.0; ui_max = 0.1;

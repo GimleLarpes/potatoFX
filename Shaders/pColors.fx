@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // pColors.fx by Gimle Larpes
-// Shader with tools for color correction and adjustments.
+// Shader with tools for color correction and grading.
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include "ReShade.fxh"
@@ -153,6 +153,20 @@ uniform float HighlightCurveSlope < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Highlights";
 > = HIGHLIGHT_CS;
 
+//Advanced color correction
+//This contains option to enable advanced colour correction (manipulate by hue, do this in LCh)
+
+//LUT
+uniform bool EnableLUT <
+	ui_type = "bool";
+	ui_label = "Enable LUT";
+    ui_tooltip = "Use LUT (lut.png)";
+	ui_category = "LUT";
+> = false;
+#ifndef fLUT_TextureName //Use same name as LUT.fx and MultiLUT.fx for compatability
+	#define fLUT_TextureName "lut.png"
+#endif
+
 //Performance
 uniform bool UseApproximateTransforms <
 	ui_type = "bool";
@@ -245,10 +259,23 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	return color.rgb;
 }
 
-technique Colors <ui_tooltip = "Shader with tools for color correction and adjustments.";>
+float3 ApplyLUT(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
+{
+	//Code
+}
+
+technique Colors <ui_tooltip = 
+"Shader with tools for advanced color correction and grading.\n\n"
+"(HDR compatible)                    Written by Gimle Larpes";>
 {
 	pass
 	{
 		VertexShader = PostProcessVS; PixelShader = ColorsPass;
 	}
+	#if EnableLUT
+	pass
+	{
+		VertexShader = PostProcessVS; PixelShader = ApplyLUT;
+	}
+	#endif
 }

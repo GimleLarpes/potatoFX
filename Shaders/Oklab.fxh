@@ -48,7 +48,7 @@ namespace Oklab
         static const float c1 = 0.8359375;  // 107/128
         static const float c2 = 18.8515625; // 2413/128
         static const float c3 = 18.6875;    // 2392/128
-        const float y = pow(abs(c * (SDR_WHITEPOINT * 0.0001)), m1);
+        const float3 y = pow(abs(c * (SDR_WHITEPOINT * 0.0001)), m1);
         return pow(abs((c1 + c2 * y) / (1 + c3 * y)), m2);
     }
     float3 HLG_to_Linear(float3 c)

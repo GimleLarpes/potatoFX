@@ -15,7 +15,7 @@
 namespace Oklab
 {
     //Constants
-    static const float Epsilon = 1e-10;
+    static const float EPSILON = 1e-10;
     static const float SDR_WHITEPOINT = 80.0;//Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
 
     //Conversions to and from linear
@@ -104,8 +104,8 @@ namespace Oklab
     float3 DisplayFormat_to_Linear(float3 c)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            c = (c < Epsilon) //Avoid reshade bug
-                ? Epsilon
+            c = (c < EPSILON) //Avoid reshade bug
+                ? EPSILON
                 : c;
 
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
@@ -138,8 +138,8 @@ namespace Oklab
     float3 Fast_DisplayFormat_to_Linear(float3 c)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            c = (c < Epsilon) //Avoid reshade bug
-                ? Epsilon
+            c = (c < EPSILON) //Avoid reshade bug
+                ? EPSILON
                 : c;
 
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084

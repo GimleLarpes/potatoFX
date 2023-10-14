@@ -17,23 +17,18 @@ namespace Oklab
     //Constants
     static const float PI = pUtils::PI;
     static const float EPSILON = 1e-10;
-    
-    //Get HDR mode
-    #if BUFFER_COLOR_SPACE == 2 | BUFFER_COLOR_SPACE == 3 | BUFFER_COLOR_SPACE == 4
-        static const bool IS_HDR = true;
-    #else
-        static const bool IS_HDR = false;
-    #endif
 
     //Show Whitepoint option if in HDR
-    #if IS_HDR
-    #ifndef SDR_WHITEPOINT
-        #define SDR_WHITEPOINT 80.0 //Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
-    #endif
+    #if BUFFER_COLOR_SPACE > 1
+        static const bool IS_HDR = true;
+        #ifndef SDR_WHITEPOINT
+            #define SDR_WHITEPOINT 80.0 //Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
+        #endif
     #else
+        static const bool IS_HDR = false;
         #define SDR_WHITEPOINT 80.0
     #endif
-
+    
     //Invnorm factor
     #if BUFFER_COLOR_SPACE == 2     //scRGB
         static const float InvNorm_Factor = 8.0;
@@ -44,6 +39,7 @@ namespace Oklab
     #else                           //Assume SDR
         static const float InvNorm_Factor = 1.0;
     #endif
+
 
 
     //Conversions to and from linear

@@ -9,13 +9,13 @@
 
 //White balance
 uniform float WBTemperature < __UNIFORM_SLIDER_FLOAT1
-	ui_min = -0.5; ui_max = 0.5;
+	ui_min = -0.25; ui_max = 0.25;
 	ui_label = "Temperature";
     ui_tooltip = "Color temperature adjustment (Blue <-> Yellow)";
 	ui_category = "White balance";
 > = 0.0;
 uniform float WBTint < __UNIFORM_SLIDER_FLOAT1
-	ui_min = -0.5; ui_max = 0.5;
+	ui_min = -0.25; ui_max = 0.25;
 	ui_label = "Tint";
     ui_tooltip = "Color tint adjustment (Magenta <-> Green)";
 	ui_category = "White balance";
@@ -42,7 +42,7 @@ uniform float GlobalBrightness < __UNIFORM_SLIDER_FLOAT1
 	#undef HIGHLIGHT_CT
 	#undef HIGHLIGHT_CS
 	#define SHADOW_CT 0.1
-	#define SHADOW_CS 7.5
+	#define SHADOW_CS 6.0
 	#define HIGHLIGHT_CT 0.15
 	#define HIGHLIGHT_CS 7.5
 #elif BUFFER_COLOR_SPACE == 3	//HDR10 ST2084
@@ -160,12 +160,18 @@ uniform float HighlightCurveSlope < __UNIFORM_SLIDER_FLOAT1
 uniform bool EnableLUT <
 	ui_type = "bool";
 	ui_label = "Enable LUT";
-    ui_tooltip = "Use LUT (lut.png)";
+    ui_tooltip = "Wheter to apply a LUT as a final processing step";
 	ui_category = "LUT";
 > = false;
 #ifndef fLUT_TextureName //Use same name as LUT.fx and MultiLUT.fx for compatability
 	#define fLUT_TextureName "lut.png"
 #endif
+#ifndef fLUT_Resolution
+	#define fLUT_Resolution 32.0
+#endif
+texture LUT < source = fLUT_TextureName; > { Height = fLUT_Resolution; Width = fLUT_Resolution * fLUT_Resolution; Format = RGBA8; };//how to detect if its 8 or 16 bit?hopefully 16 works, what happens if you sample 8 bit as 16 bit?
+sampler sLUT { Texture = LUT; };
+
 
 //Performance
 uniform bool UseApproximateTransforms <
@@ -185,6 +191,24 @@ float get_weight(float v, float t, float s) //value, threshold, curve slope
 		: (v < 0.0)
 			? 0.0
 			: v * v * (3 - 2 * v);
+}
+
+float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
+{
+	static const float expansion_factor = Oklab::InvNorm_Factor;
+	float2 texel_size = 1.0/fLUT_Resolution;
+	texel_size.x /= fLUT_Resolution;
+	float3 LUT_coord = Oklab::Normalize(c);
+	//LUT_coord = saturate(LUT_coord);//THIS IS WHAT WAS THE ISSUE ALL ALONG!! COLOURS CLIP OUT OF COLOUR SPACE -- REMOVE THIS
+	
+	LUT_coord.xy = (LUT_coord.xy * fLUT_Resolution - LUT_coord.xy + 0.5) * texel_size;
+	LUT_coord.z *= (fLUT_Resolution - 1);
+	
+	const float lerp_factor = frac(LUT_coord.z);
+	LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
+	c = lerp(tex2D(sLUT, LUT_coord.xy).rgb, tex2D(sLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
+
+	return c * expansion_factor;
 }
 
 
@@ -250,19 +274,29 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, MidtoneTintColor.b + (1 - MidtoneTintColorC) * color.b, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
 	}
 	
+	////Advanced color correction
+	//Convert to LCh
+	color = Oklab::Saturate_LCh(Oklab::Oklab_to_LCh(color));
+
 	
 
+	//Convert to linear
+	color = Oklab::Saturate_RGB(Oklab::LCh_to_RGB(color));
+
+	////LUT
+	if (EnableLUT)
+	{
+		color = Apply_LUT(color);
+	}
+
 	color = (UseApproximateTransforms)
-		? Oklab::Fast_Oklab_to_DisplayFormat(color)
-		: Oklab::Oklab_to_DisplayFormat(color);
+		? Oklab::Fast_Linear_to_DisplayFormat(color)
+		: Oklab::Linear_to_DisplayFormat(color);
 	
 	return color.rgb;
 }
 
-float3 ApplyLUT(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
-{
-	//Code
-}
+
 
 technique Colors <ui_tooltip = 
 "Shader with tools for advanced color correction and grading.\n\n"
@@ -272,10 +306,8 @@ technique Colors <ui_tooltip =
 	{
 		VertexShader = PostProcessVS; PixelShader = ColorsPass;
 	}
-	#if EnableLUT
-	pass
-	{
-		VertexShader = PostProcessVS; PixelShader = ApplyLUT;
-	}
-	#endif
+	//pass
+	//{
+	//	VertexShader = PostProcessVS; PixelShader = ApplyLUT;
+	//}
 }

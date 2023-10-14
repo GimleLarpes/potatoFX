@@ -34,6 +34,17 @@ uniform float GlobalBrightness < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Global adjustments";
 > = 0.0;
 
+
+//Advanced color correction
+//This contains option to enable advanced colour correction (manipulate by hue, do this in LCh)
+uniform bool EnableAdvancedColorCorrection <
+	ui_type = "bool";
+	ui_label = "Enable Advanced Color Correction";
+    ui_tooltip = "Enable advanced color correction (manipulate by hue)";
+	ui_category = "Advanced Color Correction";
+> = false;
+
+
 //Shadows midtones highlights
 //Curve default values
 #if BUFFER_COLOR_SPACE == 2		//scRGB
@@ -153,16 +164,26 @@ uniform float HighlightCurveSlope < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Highlights";
 > = HIGHLIGHT_CS;
 
-//Advanced color correction
-//This contains option to enable advanced colour correction (manipulate by hue, do this in LCh)
 
 //LUT
 uniform bool EnableLUT <
 	ui_type = "bool";
 	ui_label = "Enable LUT";
-    ui_tooltip = "Wheter to apply a LUT as a final processing step";
+    ui_tooltip = "Apply a LUT as a final processing step";
 	ui_category = "LUT";
 > = false;
+
+#if BUFFER_COLOR_SPACE > 1	//Show LUT whitepoint setting if in HDR
+uniform float LUT_WhitePoint < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+	ui_label = "LUT White point";
+	ui_tooltip = "Adjusts what range of brightness LUT affects, useful when applying SDR LUTs to HDR\n\n(0= apply LUT to nothing, 1= apply LUT to entire image)";
+	ui_category = "LUT";
+> = 1.0;
+#else
+	static const float LUT_WhitePoint = 1.0;
+#endif
+
 #ifndef fLUT_TextureName //Use same name as LUT.fx and MultiLUT.fx for compatability
 	#define fLUT_TextureName "lut.png"
 #endif
@@ -198,17 +219,21 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 	static const float expansion_factor = Oklab::InvNorm_Factor;
 	float2 texel_size = 1.0/fLUT_Resolution;
 	texel_size.x /= fLUT_Resolution;
-	float3 LUT_coord = Oklab::Normalize(c);
-	//LUT_coord = saturate(LUT_coord);//THIS IS WHAT WAS THE ISSUE ALL ALONG!! COLOURS CLIP OUT OF COLOUR SPACE -- REMOVE THIS
+	float3 LUT_coord = Oklab::Normalize(c) / LUT_WhitePoint;
 	
-	LUT_coord.xy = (LUT_coord.xy * fLUT_Resolution - LUT_coord.xy + 0.5) * texel_size;
-	LUT_coord.z *= (fLUT_Resolution - 1);
+	if (max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z)) <= 1.0) //Only apply LUT if value is in LUT range
+	{
+		LUT_coord.xy = (LUT_coord.xy * fLUT_Resolution - LUT_coord.xy + 0.5) * texel_size;
+		LUT_coord.z *= (fLUT_Resolution - 1);
 	
-	const float lerp_factor = frac(LUT_coord.z);
-	LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
-	c = lerp(tex2D(sLUT, LUT_coord.xy).rgb, tex2D(sLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
+		const float lerp_factor = frac(LUT_coord.z);
+		LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
+		c = lerp(tex2D(sLUT, LUT_coord.xy).rgb, tex2D(sLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
 
-	return c * expansion_factor;
+		return c * LUT_WhitePoint * expansion_factor; //ADD BLENDING WHEN THE MAX VALUE APPROACHES 1 TO AVOID BANDING
+	}
+
+	return c;
 }
 
 
@@ -238,6 +263,20 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	//Global adjustments
 	color.r *= (1 + GlobalBrightness);
 	color.gb *= (1 + GlobalSaturation);
+
+
+	////Advanced color correction
+	if (EnableAdvancedColorCorrection)
+	{
+		color = Oklab::Oklab_to_LCh(color);
+
+		//Adjustments by hue
+		//Adjustable hue range(width)?
+		//Pre-selected hues you can change or a number of colour inputs you can use to select hue?
+
+		//Convert to Oklab
+		color = Oklab::LCh_to_Oklab(Oklab::Saturate_LCh(color));
+	}
 
 
 	//Shadows-midtones-highlights colors
@@ -273,15 +312,10 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.g = lerp(color.g, MidtoneTintColor.g + (1 - MidtoneTintColorC) * color.g, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
 		color.b = lerp(color.b, MidtoneTintColor.b + (1 - MidtoneTintColorC) * color.b, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
 	}
-	
-	////Advanced color correction
-	//Convert to LCh
-	color = Oklab::Saturate_LCh(Oklab::Oklab_to_LCh(color));
-
-	
-
 	//Convert to linear
-	color = Oklab::Saturate_RGB(Oklab::LCh_to_RGB(color));
+	//color = Oklab::Saturate_RGB(Oklab::Oklab_to_RGB(color)); //HIGHLIGHTS ARE CLIPPED! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	color = Oklab::Oklab_to_RGB(color);
+
 
 	////LUT
 	if (EnableLUT)
@@ -306,8 +340,4 @@ technique Colors <ui_tooltip =
 	{
 		VertexShader = PostProcessVS; PixelShader = ColorsPass;
 	}
-	//pass
-	//{
-	//	VertexShader = PostProcessVS; PixelShader = ApplyLUT;
-	//}
 }

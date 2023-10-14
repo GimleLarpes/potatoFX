@@ -15,8 +15,28 @@
 namespace Oklab
 {
     //Constants
+    static const float PI = pUtils::PI;
     static const float EPSILON = 1e-10;
-    static const float SDR_WHITEPOINT = 80.0;//Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
+    
+    //Show Whitepoint option if in HDR
+    #if BUFFER_COLOR_SPACE == 2 | BUFFER_COLOR_SPACE == 3 | BUFFER_COLOR_SPACE == 4
+    #ifndef SDR_WHITEPOINT
+        #define SDR_WHITEPOINT 80.0 //Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
+    #endif
+    #else
+        #define SDR_WHITEPOINT 80.0
+    #endif
+
+    //Invnorm factor
+    #if BUFFER_COLOR_SPACE == 2     //scRGB
+        static const float InvNorm_Factor = 8.0;
+    #elif BUFFER_COLOR_SPACE == 3   //HDR10 ST2084
+        static const float InvNorm_Factor = 10000.0 / SDR_WHITEPOINT;
+    #elif BUFFER_COLOR_SPACE == 4   //HDR10 HLG
+        static const float InvNorm_Factor = 1000.0 / SDR_WHITEPOINT;
+    #else                           //Assume SDR
+        static const float InvNorm_Factor = 1.0;
+    #endif
 
     //Conversions to and from linear
     float3 sRGB_to_Linear(float3 c)
@@ -173,14 +193,19 @@ namespace Oklab
     //Utility functions for Oklab
     float3 Saturate_LCh(float3 c)
     {
-        const float d = max(length(c.yz), 1.0);
-        c.y = c.y / d;
-        c.z = c.z / d;
+        c.y = clamp(c.y, 0.0, 1.0);
+        c.z = (c.z < 0.0)
+            ? c.z + 2 * PI
+            : c.z;
         return c;
     }
     float get_Oklab_Chromacity(float3 c)
     {
         return length(c.yz);
+    }
+    float3 Saturate_RGB(float3 c)
+    {
+        return float3(clamp(c.r, 0.0, InvNorm_Factor), clamp(c.g, 0.0, InvNorm_Factor), clamp(c.b, 0.0, InvNorm_Factor));
     }
 
     //Utility functions for HDR
@@ -207,20 +232,6 @@ namespace Oklab
             v *= SDR_WHITEPOINT * 0.001;
         #else //Assume SDR
             v = v;
-        #endif
-            return v;
-    }
-    float get_InvNorm_Factor()
-    {   
-        float v;
-        #if BUFFER_COLOR_SPACE == 2//scRGB
-            v = 8.0;
-        #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            v = 10000.0 / SDR_WHITEPOINT;
-        #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            v = 1000.0 / SDR_WHITEPOINT;
-        #else //Assume SDR
-            v = 1.0;
         #endif
             return v;
     }

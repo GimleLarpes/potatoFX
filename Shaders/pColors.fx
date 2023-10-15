@@ -230,7 +230,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 			: color.b + WBTemperature;
 	}
 	static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
-	float adapted_luminance = min(luminance / PAPER_WHITE, 1.0);
+	float adapted_luminance = min(2*luminance / PAPER_WHITE, 1.0);
 
 
 	//Global adjustments

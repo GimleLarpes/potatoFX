@@ -87,7 +87,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 
 	float luminance = color.r + m;
 	float luminance_norm = Oklab::Normalize(luminance);
-	static const float PW_COMPENSATION = rcp(Oklab::InvNorm_Factor - Oklab::HDR_PAPER_WHITE);
+	static const float PW_COMPENSATION = rcp(1 + Oklab::InvNorm_Factor - Oklab::HDR_PAPER_WHITE);
 	float palette_control = PW_COMPENSATION * PaletteBalance;
 	float hue_range;
 	float hue_offset = 0.0;

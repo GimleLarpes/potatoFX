@@ -46,45 +46,6 @@ uniform bool EnableAdvancedColorCorrection <
 
 
 //Shadows midtones highlights
-//Curve default values
-#if BUFFER_COLOR_SPACE == 2		//scRGB
-    #undef SHADOW_CT
-	#undef SHADOW_CS
-	#undef HIGHLIGHT_CT
-	#undef HIGHLIGHT_CS
-	#define SHADOW_CT 0.1
-	#define SHADOW_CS 6.0
-	#define HIGHLIGHT_CT 0.15
-	#define HIGHLIGHT_CS 7.5
-#elif BUFFER_COLOR_SPACE == 3	//HDR10 ST2084
-    #undef SHADOW_CT
-	#undef SHADOW_CS
-	#undef HIGHLIGHT_CT
-	#undef HIGHLIGHT_CS
-	#define SHADOW_CT 0.01
-	#define SHADOW_CS 7.5
-	#define HIGHLIGHT_CT 0.02
-	#define HIGHLIGHT_CS 7.5
-#elif BUFFER_COLOR_SPACE == 4 	//HDR10 HLG
-    #undef SHADOW_CT
-	#undef SHADOW_CS
-	#undef HIGHLIGHT_CT
-	#undef HIGHLIGHT_CS
-	#define SHADOW_CT 0.08
-	#define SHADOW_CS 7.5
-	#define HIGHLIGHT_CT 0.12
-	#define HIGHLIGHT_CS 7.5
-#else 							//Assume SDR
-	#undef SHADOW_CT
-	#undef SHADOW_CS
-	#undef HIGHLIGHT_CT
-	#undef HIGHLIGHT_CS
-	#define SHADOW_CT 0.25
-	#define SHADOW_CS 7.5
-	#define HIGHLIGHT_CT 0.75
-	#define HIGHLIGHT_CS 5.0
-#endif
-
 //Shadows
 uniform float3 ShadowTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
@@ -108,13 +69,13 @@ uniform float ShadowThreshold < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Threshold";
 	ui_tooltip = "Threshold for what is considered shadows";
 	ui_category = "Shadows";
-> = SHADOW_CT;
+> = 0.25;
 uniform float ShadowCurveSlope < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 2.5; ui_max = 10.0;
+	ui_min = 1.0; ui_max = 5.0;
 	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to shadows is";
 	ui_category = "Shadows";
-> = SHADOW_CS;
+> = 2.5;
 //Midtones
 uniform float3 MidtoneTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
@@ -138,7 +99,7 @@ uniform float3 HighlightTintColor < __UNIFORM_COLOR_FLOAT3
 	ui_label = "Tint";
 	ui_tooltip = "Color to which highlights are tinted";
 	ui_category = "Highlights";
-> = float3(1.0, 0.96, 0.78);
+> = float3(1.0, 0.98, 0.90);
 uniform float HighlightSaturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
@@ -156,13 +117,13 @@ uniform float HighlightThreshold < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Threshold";
 	ui_tooltip = "Threshold for what is considered highlights";
 	ui_category = "Highlights";
-> = HIGHLIGHT_CT;
+> = 0.75;
 uniform float HighlightCurveSlope < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 2.5; ui_max = 10.0;
+	ui_min = 1.0; ui_max = 5.0;
 	ui_label = "Curve Slope";
 	ui_tooltip = "How steep the transition to highlights is";
 	ui_category = "Highlights";
-> = HIGHLIGHT_CS;
+> = 2.5;
 
 
 //LUT
@@ -216,12 +177,13 @@ float get_weight(float v, float t, float s) //value, threshold, curve slope
 
 float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 {
-	static const float expansion_factor = Oklab::InvNorm_Factor;
+	static const float EXPANSION_FACTOR = Oklab::InvNorm_Factor;
 	float2 texel_size = 1.0/fLUT_Resolution;
 	texel_size.x /= fLUT_Resolution;
 	float3 LUT_coord = Oklab::Normalize(c) / LUT_WhitePoint;
+	float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
 	
-	if (max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z)) <= 1.0) //Only apply LUT if value is in LUT range
+	if (bounds <= 1.0) //Only apply LUT if value is in LUT range
 	{
 		LUT_coord.xy = (LUT_coord.xy * fLUT_Resolution - LUT_coord.xy + 0.5) * texel_size;
 		LUT_coord.z *= (fLUT_Resolution - 1);
@@ -230,7 +192,7 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 		LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
 		c = lerp(tex2D(sLUT, LUT_coord.xy).rgb, tex2D(sLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
 
-		return c * LUT_WhitePoint * expansion_factor; //ADD BLENDING WHEN THE MAX VALUE APPROACHES 1 TO AVOID BANDING
+		return c * LUT_WhitePoint * EXPANSION_FACTOR; //ADD BLENDING WHEN THE MAX VALUE APPROACHES 1 TO AVOID BANDING
 	}
 
 	return c;
@@ -245,11 +207,13 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	//Do all color-stuff in Oklab color space
 	color = (UseApproximateTransforms)
-		? Oklab::Fast_DisplayFormat_to_Oklab(color)
-		: Oklab::DisplayFormat_to_Oklab(color);
+		? Oklab::Fast_DisplayFormat_to_Linear(color)
+		: Oklab::DisplayFormat_to_Linear(color);
+	float luminance = Oklab::Luminance_RGB(color);
 	
 	
 	////Processing
+	color = Oklab::RGB_to_Oklab(color);
 	//White balance calculations
 	if (WBTemperature != 0.0 | WBTint != 0.0)
 	{
@@ -258,7 +222,9 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 			? color.b + WBTemperature + WBTint
 			: color.b + WBTemperature;
 	}
-	const float luminance_norm = Oklab::Normalize(color.r);
+	static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
+	float adapted_luminance = min(4.0 * luminance / (2.0*PAPER_WHITE), 1.0);
+
 
 	//Global adjustments
 	color.r *= (1 + GlobalBrightness);
@@ -289,7 +255,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	const float shadow_weight = get_weight(luminance_norm, ShadowThreshold, -ShadowCurveSlope);
+	const float shadow_weight = get_weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + ShadowBrightness * shadow_weight);
@@ -297,7 +263,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, ShadowTintColor.b + (1 - ShadowTintColorC) * color.b, shadow_weight) * (1 + ShadowSaturation * shadow_weight);
 	}
 	//Highlights
-	const float highlight_weight = get_weight(luminance_norm, HighlightThreshold, HighlightCurveSlope);
+	const float highlight_weight = get_weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
 	if (highlight_weight != 0.0)
 	{
 		color.r *= (1 + HighlightBrightness * highlight_weight);
@@ -333,7 +299,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 technique Colors <ui_tooltip = 
 "Shader with tools for advanced color correction and grading.\n\n"
-"(HDR compatible)                  - Written by Gimle Larpes";>
+"(HDR compatible)";>
 {
 	pass
 	{

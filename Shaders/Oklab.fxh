@@ -18,20 +18,26 @@ namespace Oklab
     static const float PI = pUtils::PI;
     static const float EPSILON = 1e-10;
 
-    //Show Whitepoint option if in HDR
+    static const float SDR_WHITEPOINT = 80.0; //Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
+
+    //Show paper white option if in HDR
     #if BUFFER_COLOR_SPACE > 1
         static const bool IS_HDR = true;
-        #ifndef SDR_WHITEPOINT
-            #define SDR_WHITEPOINT 80.0 //Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
+        #ifndef HDR_PAPER_WHITE_NITS
+	        #define HDR_PAPER_WHITE_NITS 200
         #endif
     #else
         static const bool IS_HDR = false;
-        #define SDR_WHITEPOINT 80.0
+        #undef HDR_PAPER_WHITE_NITS
+        #define HDR_PAPER_WHITE_NITS 40.0
+        static const float HDR_PAPER_WHITE = 160;
     #endif
+    static const float HDR_PAPER_WHITE = HDR_PAPER_WHITE_NITS / SDR_WHITEPOINT;
+
     
     //Invnorm factor
     #if BUFFER_COLOR_SPACE == 2     //scRGB
-        static const float InvNorm_Factor = 44.0;//I thought it was 8, but warthunder has it at 44x?
+        static const float InvNorm_Factor = 43.75;//I thought it was 8.0, but warthunder has it at 43.75x=3500nits?
     #elif BUFFER_COLOR_SPACE == 3   //HDR10 ST2084
         static const float InvNorm_Factor = 10000.0 / SDR_WHITEPOINT;
     #elif BUFFER_COLOR_SPACE == 4   //HDR10 HLG
@@ -211,33 +217,19 @@ namespace Oklab
     {
         return float3(clamp(c.r, 0.0, InvNorm_Factor), clamp(c.g, 0.0, InvNorm_Factor), clamp(c.b, 0.0, InvNorm_Factor));
     }
+    float Luminance_RGB(float3 c)
+    {
+        return dot(c, float3(0.2126, 0.7152, 0.0722));
+    }
 
     //Utility functions for HDR
     float Normalize(float v)
     {   
-        #if BUFFER_COLOR_SPACE == 2//scRGB
-            v /= InvNorm_Factor;
-        #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            v *= SDR_WHITEPOINT * 0.0001;
-        #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            v *= SDR_WHITEPOINT * 0.001;
-        #else //Assume SDR
-            v = v;
-        #endif
-            return v;
+        return v / InvNorm_Factor;
     }
     float3 Normalize(float3 v)
     {   
-        #if BUFFER_COLOR_SPACE == 2//scRGB
-            v /= InvNorm_Factor;
-        #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
-            v *= SDR_WHITEPOINT * 0.0001;
-        #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
-            v *= SDR_WHITEPOINT * 0.001;
-        #else //Assume SDR
-            v = v;
-        #endif
-            return v;
+        return v / InvNorm_Factor;
     }
 
     //Transformations

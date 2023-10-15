@@ -27,7 +27,7 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
 //Set default palettebalance to something that hopefully works for each color space
 #if BUFFER_COLOR_SPACE == 2		//scRGB
 	#undef DEFAULT_PB
-	#define DEFAULT_PB 0.125
+	#define DEFAULT_PB 0.033//0.125
 #elif BUFFER_COLOR_SPACE == 3	//HDR10 ST2084
 	#undef DEFAULT_PB
 	#define DEFAULT_PB 0.01
@@ -151,7 +151,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 
 technique PalettePosterize <ui_tooltip = 
 "Posterizes an image to a custom color palette.\n\n"
-"(HDR compatible)    - Written by Gimle Larpes";>
+"(HDR compatible)";>
 {
 	pass
 	{

@@ -181,6 +181,8 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 	float2 texel_size = 1.0/fLUT_Resolution;
 	texel_size.x /= fLUT_Resolution;
 	float3 LUT_coord = Oklab::Normalize(c) / LUT_WhitePoint;
+	
+	float3 oc = LUT_coord;
 	float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
 	
 	if (bounds <= 1.0) //Only apply LUT if value is in LUT range
@@ -192,7 +194,12 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 		LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
 		c = lerp(tex2D(sLUT, LUT_coord.xy).rgb, tex2D(sLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
 
-		return c * LUT_WhitePoint * EXPANSION_FACTOR; //ADD BLENDING WHEN THE MAX VALUE APPROACHES 1 TO AVOID BANDING
+		if (bounds > 0.9 && LUT_WhitePoint != 1.0) //Fade out LUT to avoid banding
+		{
+			c = lerp(c, oc, 10.0 * (bounds - 0.9));
+		}
+
+		return c * LUT_WhitePoint * EXPANSION_FACTOR;
 	}
 
 	return c;

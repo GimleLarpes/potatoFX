@@ -23,28 +23,12 @@ uniform int NumColors < __UNIFORM_SLIDER_INT1
     ui_tooltip = "Number of colors to posterize to";
 	ui_category = "Settings";
 > = 4;
-
-//Set default palettebalance to something that hopefully works for each color space
-#if BUFFER_COLOR_SPACE == 2		//scRGB
-	#undef DEFAULT_PB
-	#define DEFAULT_PB 0.033//0.125
-#elif BUFFER_COLOR_SPACE == 3	//HDR10 ST2084
-	#undef DEFAULT_PB
-	#define DEFAULT_PB 0.01
-#elif BUFFER_COLOR_SPACE == 4 	//HDR10 HLG
-	#undef DEFAULT_PB
-	#define DEFAULT_PB 0.1
-#else 							//Assume SDR, sRGB
-	#undef DEFAULT_PB
-	#define DEFAULT_PB 1.0
-#endif
-
 uniform float PaletteBalance < __UNIFORM_SLIDER_FLOAT1
-	ui_label = "Palette Balance (adjust if in HDR)";
+	ui_label = "Palette Balance";
 	ui_min = 0.01; ui_max = 2.0;
     ui_tooltip = "Adjusts thresholds for color palette";
 	ui_category = "Settings";
-> = DEFAULT_PB;
+> = 1.0;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Dithering";
 	ui_min = 0.0; ui_max = 0.1;
@@ -102,7 +86,9 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	}
 
 	float luminance = color.r + m;
-	const float luminance_norm = Oklab::Normalize(luminance);
+	float luminance_norm = Oklab::Normalize(luminance);
+	static const float PW_COMPENSATION = rcp(Oklab::InvNorm_Factor - Oklab::HDR_PAPER_WHITE);
+	float palette_control = PW_COMPENSATION * PaletteBalance;
 	float hue_range;
 	float hue_offset = 0.0;
 	
@@ -119,15 +105,15 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		case 2: //Complementary
 		{
 			hue_range = PI/2.0;
-			hue_offset = (luminance_norm > 0.5 * PaletteBalance)
+			hue_offset = (luminance_norm > 0.5 * palette_control)
 				? PI*0.75
 				: 0.0;
 		} break;
 		case 3: //Triadic
 		{
 			hue_range = PI/2.0;
-			hue_offset = (luminance_norm > 0.33 * PaletteBalance)
-				? PI*0.4167 * floor(luminance_norm * 3.0 / PaletteBalance)
+			hue_offset = (luminance_norm > 0.33 * palette_control)
+				? PI*0.4167 * floor(luminance_norm * 3.0 / palette_control)
 				: 0.0;
 		} break;
 		case 4: //All colors

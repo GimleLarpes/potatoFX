@@ -248,7 +248,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		? Oklab::Fast_DisplayFormat_to_Oklab(color)
 		: Oklab::DisplayFormat_to_Oklab(color);
 	
-
+	
 	////Processing
 	//White balance calculations
 	if (WBTemperature != 0.0 | WBTint != 0.0)
@@ -313,8 +313,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, MidtoneTintColor.b + (1 - MidtoneTintColorC) * color.b, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
 	}
 	//Convert to linear
-	//color = Oklab::Saturate_RGB(Oklab::Oklab_to_RGB(color)); //HIGHLIGHTS ARE CLIPPED! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	color = Oklab::Oklab_to_RGB(color);
+	color = Oklab::Saturate_RGB(Oklab::Oklab_to_RGB(color));
 
 
 	////LUT

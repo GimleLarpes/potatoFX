@@ -31,7 +31,7 @@ namespace Oklab
     
     //Invnorm factor
     #if BUFFER_COLOR_SPACE == 2     //scRGB
-        static const float InvNorm_Factor = 8.0;
+        static const float InvNorm_Factor = 44.0;
     #elif BUFFER_COLOR_SPACE == 3   //HDR10 ST2084
         static const float InvNorm_Factor = 10000.0 / SDR_WHITEPOINT;
     #elif BUFFER_COLOR_SPACE == 4   //HDR10 HLG
@@ -216,7 +216,7 @@ namespace Oklab
     float Normalize(float v)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            v *= 0.125;
+            v /= InvNorm_Factor;
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
             v *= SDR_WHITEPOINT * 0.0001;
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
@@ -229,7 +229,7 @@ namespace Oklab
     float3 Normalize(float3 v)
     {   
         #if BUFFER_COLOR_SPACE == 2//scRGB
-            v *= 0.125;
+            v /= InvNorm_Factor;
         #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
             v *= SDR_WHITEPOINT * 0.0001;
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG

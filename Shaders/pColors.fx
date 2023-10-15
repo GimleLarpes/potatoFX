@@ -181,16 +181,16 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 	float2 texel_size = 1.0/fLUT_Resolution;
 	texel_size.x /= fLUT_Resolution;
 	float3 LUT_coord = Oklab::Normalize(c) / LUT_WhitePoint;
-	
-	float3 oc = LUT_coord;
+
 	float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
 	
 	if (bounds <= 1.0) //Only apply LUT if value is in LUT range
 	{
+		float3 oc = LUT_coord;
 		LUT_coord.xy = (LUT_coord.xy * fLUT_Resolution - LUT_coord.xy + 0.5) * texel_size;
 		LUT_coord.z *= (fLUT_Resolution - 1);
 	
-		const float lerp_factor = frac(LUT_coord.z);
+		float lerp_factor = frac(LUT_coord.z);
 		LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
 		c = lerp(tex2D(sLUT, LUT_coord.xy).rgb, tex2D(sLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
 
@@ -262,7 +262,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	const float shadow_weight = get_weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
+	float shadow_weight = get_weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + ShadowBrightness * shadow_weight);
@@ -270,7 +270,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, ShadowTintColor.b + (1 - ShadowTintColorC) * color.b, shadow_weight) * (1 + ShadowSaturation * shadow_weight);
 	}
 	//Highlights
-	const float highlight_weight = get_weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
+	float highlight_weight = get_weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
 	if (highlight_weight != 0.0)
 	{
 		color.r *= (1 + HighlightBrightness * highlight_weight);
@@ -278,7 +278,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, HighlightTintColor.b + (1 - HighlightTintColorC) * color.b, highlight_weight) * (1 + HighlightSaturation * highlight_weight);
 	}
 	//Midtones
-	const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
+	float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
 	if (midtone_weight != 0.0)
 	{
 		color.r *= (1 + MidtoneBrightness * midtone_weight);

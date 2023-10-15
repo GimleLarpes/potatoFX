@@ -31,7 +31,7 @@ namespace Oklab
     
     //Invnorm factor
     #if BUFFER_COLOR_SPACE == 2     //scRGB
-        static const float InvNorm_Factor = 44.0;
+        static const float InvNorm_Factor = 44.0;//I thought it was 8, but warthunder has it at 44x?
     #elif BUFFER_COLOR_SPACE == 3   //HDR10 ST2084
         static const float InvNorm_Factor = 10000.0 / SDR_WHITEPOINT;
     #elif BUFFER_COLOR_SPACE == 4   //HDR10 HLG

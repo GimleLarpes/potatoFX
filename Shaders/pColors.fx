@@ -36,13 +36,155 @@ uniform float GlobalBrightness < __UNIFORM_SLIDER_FLOAT1
 
 
 //Advanced color correction
-//This contains option to enable advanced colour correction (manipulate by hue, do this in LCh)
-uniform bool EnableAdvancedColorCorrection <
-	ui_type = "bool";
-	ui_label = "Enable Advanced Color Correction";
-    ui_tooltip = "Enable advanced color correction (manipulate by hue)";
-	ui_category = "Advanced Color Correction";
-> = false;
+#ifndef ENABLE_ADVANCED_COLOR_CORRECTION
+	#define ENABLE_ADVANCED_COLOR_CORRECTION false
+#endif
+#if ENABLE_ADVANCED_COLOR_CORRECTION == true
+	//Hue 1
+	uniform float3 Hue1 < __UNIFORM_COLOR_FLOAT3
+		ui_label = "Hue 1";
+		ui_tooltip = "Hue to adjust";
+		ui_category = "Advanced Color Correction";
+	> = float3(1.0, 0.0, 0.0);
+	uniform float Hue1Shift < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Hue Shift";
+		ui_tooltip = "Hue 1 shift +-180°";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue1Saturation < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Saturation";
+		ui_tooltip = "Hue 1 saturation adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue1Brightness < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Brightness";
+		ui_tooltip = "Hue 1 brightness adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	//Hue 2
+	uniform float3 Hue2 < __UNIFORM_COLOR_FLOAT3
+		ui_label = "Hue 2";
+		ui_tooltip = "Hue to adjust";
+		ui_category = "Advanced Color Correction";
+	> = float3(1.0, 1.0, 0.0);
+	uniform float Hue2Shift < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Hue Shift";
+		ui_tooltip = "Hue 2 shift +-180°";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue2Saturation < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Saturation";
+		ui_tooltip = "Hue 2 saturation adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue2Brightness < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Brightness";
+		ui_tooltip = "Hue 2 brightness adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	//Hue 3
+	uniform float3 Hue3 < __UNIFORM_COLOR_FLOAT3
+		ui_label = "Hue 3";
+		ui_tooltip = "Hue to adjust";
+		ui_category = "Advanced Color Correction";
+	> = float3(0.0, 1.0, 0.0);
+	uniform float Hue3Shift < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Hue Shift";
+		ui_tooltip = "Hue 3 shift +-180°";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue3Saturation < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Saturation";
+		ui_tooltip = "Hue 3 saturation adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue3Brightness < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Brightness";
+		ui_tooltip = "Hue 3 brightness adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	//Hue 4
+	uniform float3 Hue4 < __UNIFORM_COLOR_FLOAT3
+		ui_label = "Hue 4";
+		ui_tooltip = "Hue to adjust";
+		ui_category = "Advanced Color Correction";
+	> = float3(0.0, 1.0, 1.0);
+	uniform float Hue4Shift < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Hue Shift";
+		ui_tooltip = "Hue 4 shift +-180°";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue4Saturation < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Saturation";
+		ui_tooltip = "Hue 4 saturation adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue4Brightness < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Brightness";
+		ui_tooltip = "Hue 4 brightness adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	//Hue 5
+	uniform float3 Hue5 < __UNIFORM_COLOR_FLOAT3
+		ui_label = "Hue 5";
+		ui_tooltip = "Hue to adjust";
+		ui_category = "Advanced Color Correction";
+	> = float3(0.0, 0.0, 1.0);
+	uniform float Hue5Shift < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Hue Shift";
+		ui_tooltip = "Hue 5 shift +-180°";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue5Saturation < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Saturation";
+		ui_tooltip = "Hue 5 saturation adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue5Brightness < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Brightness";
+		ui_tooltip = "Hue 5 brightness adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	//Hue 6
+	uniform float3 Hue6 < __UNIFORM_COLOR_FLOAT3
+		ui_label = "Hue 6";
+		ui_tooltip = "Hue to adjust";
+		ui_category = "Advanced Color Correction";
+	> = float3(1.0, 0.0, 1.0);
+	uniform float Hue6Shift < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Hue Shift";
+		ui_tooltip = "Hue 6 shift +-180°";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue6Saturation < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Saturation";
+		ui_tooltip = "Hue 6 saturation adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+	uniform float Hue6Brightness < __UNIFORM_SLIDER_FLOAT1
+		ui_min = -1.0; ui_max = 1.0;
+		ui_label = "Brightness";
+		ui_tooltip = "Hue 6 brightness adjustment";
+		ui_category = "Advanced Color Correction";
+	> = 0.0;
+#endif
 
 
 //Shadows midtones highlights
@@ -239,17 +381,17 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 
 	////Advanced color correction
-	if (EnableAdvancedColorCorrection)
-	{
+	#if ENABLE_ADVANCED_COLOR_CORRECTION == true
+	
 		color = Oklab::Oklab_to_LCh(color);
 
-		//Adjustments by hue
-		//Adjustable hue range(width)?
-		//Pre-selected hues you can change or a number of colour inputs you can use to select hue?
+		//Adjustments by hue, do this in LCh
+		//Adjustable hue range(width)? (no, that would just make it too complicated for the user (I think?))
+		//Create function to do this
 
 		//Convert to Oklab
 		color = Oklab::LCh_to_Oklab(Oklab::Saturate_LCh(color));
-	}
+	#endif
 
 
 	//Shadows-midtones-highlights colors

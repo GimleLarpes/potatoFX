@@ -317,17 +317,18 @@ float get_Weight(float v, float t, float s) //value, threshold, curve slope
 			: v * v * (3 - 2 * v);
 }
 
-float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
+float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Marty McFly
 {
 	static const float EXPANSION_FACTOR = Oklab::INVNORM_FACTOR;
-	float2 texel_size = 1.0 / fLUT_Resolution;
-	texel_size.x /= fLUT_Resolution;
 	float3 LUT_coord = c / EXPANSION_FACTOR / LUT_WhitePoint;
 
 	float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
 	
 	if (bounds <= 1.0) //Only apply LUT if value is in LUT range
 	{
+		float2 texel_size = rcp(fLUT_Resolution);
+		texel_size.x /= fLUT_Resolution;
+
 		const float3 oc = LUT_coord;
 		LUT_coord.xy = (LUT_coord.xy * fLUT_Resolution - LUT_coord.xy + 0.5) * texel_size;
 		LUT_coord.z *= (fLUT_Resolution - 1);

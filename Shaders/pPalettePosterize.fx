@@ -76,19 +76,18 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	float m;
 	if (DitheringFactor != 0.0)
 	{
-		static const float n = Oklab::INVNORM_FACTOR;
-		const int2 xy = int2(texcoord * ReShade::ScreenSize) % 2.0;
-		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * n * DitheringFactor;
+		int2 xy = int2(texcoord * ReShade::ScreenSize) % 2.0;
+		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * Oklab::INVNORM_FACTOR * DitheringFactor;
 	}
 	else
 	{
 		m = 0.0;
 	}
 
-	const float luminance = color.r + m;
-	const float luminance_norm = Oklab::Normalize(luminance);
+	float luminance = color.r + m;
+	float luminance_norm = Oklab::Normalize(luminance);
 	static const float PW_COMPENSATION = rcp(1 + Oklab::INVNORM_FACTOR - Oklab::HDR_PAPER_WHITE);
-	const float palette_control = PW_COMPENSATION * PaletteBalance;
+	static const float PALETTE_CONTROL = PW_COMPENSATION * PaletteBalance;
 	float hue_range;
 	float hue_offset = 0.0;
 	
@@ -105,15 +104,15 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		case 2: //Complementary
 		{
 			hue_range = PI/2.0;
-			hue_offset = (luminance_norm > 0.5 * palette_control)
+			hue_offset = (luminance_norm > 0.5 * PALETTE_CONTROL)
 				? PI*0.75
 				: 0.0;
 		} break;
 		case 3: //Triadic
 		{
 			hue_range = PI/2.0;
-			hue_offset = (luminance_norm > 0.33 * palette_control)
-				? PI*0.4167 * floor(luminance_norm * 3.0 / palette_control)
+			hue_offset = (luminance_norm > 0.33 * PALETTE_CONTROL)
+				? PI*0.4167 * floor(luminance_norm * 3.0 / PALETTE_CONTROL)
 				: 0.0;
 		} break;
 		case 4: //All colors

@@ -25,25 +25,25 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 	
 	float t = FrameCount * 0.2783;
 	t %= 10000; //Protect against very large numbers
-	const float luma = dot(color, float3(0.2126, 0.7152, 0.0722));
+	float luma = dot(color, float3(0.2126, 0.7152, 0.0722));
 
 	//PRNG 2D - create two uniform noise values and save one DP2ADD
-	const float seed = dot(texcoord, float2(12.9898, 78.233));
+	float seed = dot(texcoord, float2(12.9898, 78.233));
 	float uniform_noise1 = frac(sin(seed) * 43758.5453 + t);
-	const float uniform_noise2 = frac(cos(seed) * 53758.5453 - t);
+	float uniform_noise2 = frac(cos(seed) * 53758.5453 - t);
 
 	//Box-Muller transform
 	uniform_noise1 = (uniform_noise1 < 0.0001) ? 0.0001 : uniform_noise1; //fix log(0)
 		
 	float r = sqrt(-log(uniform_noise1));
 	r = (uniform_noise1 < 0.0001) ? PI : r; //fix log(0) - PI happened to be the right answer for uniform_noise == ~ 0.0000517
-	const float theta = (2.0 * PI) * uniform_noise2;
+	float theta = (2.0 * PI) * uniform_noise2;
 	
-	const float gauss_noise1 = r * cos(theta);
-	const float gauss_noise2 = r * sin(theta);
-	const float gauss_noise3 = (gauss_noise1 + gauss_noise2) * 0.7;
-	const float weight = Strength * NOISE_CURVE / (luma * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luma to simulate a wider dynamic range
-	                                                                  //divide Strength by 2 to reduce sensitivity and set maximum SNR to 50%.
+	float gauss_noise1 = r * cos(theta);
+	float gauss_noise2 = r * sin(theta);
+	float gauss_noise3 = (gauss_noise1 + gauss_noise2) * 0.7;
+	float weight = Strength * NOISE_CURVE / (luma * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luma to simulate a wider dynamic range
+	                                                            //divide Strength by 2 to reduce sensitivity and set maximum SNR to 50%.
 	color.rgb = color.rgb * (1-weight) + float3(gauss_noise1, gauss_noise2, gauss_noise3) * weight;
 	
 	return color.rgb;

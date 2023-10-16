@@ -324,7 +324,7 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 	texel_size.x /= fLUT_Resolution;
 	float3 LUT_coord = c / EXPANSION_FACTOR / LUT_WhitePoint;
 
-	const float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
+	float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
 	
 	if (bounds <= 1.0) //Only apply LUT if value is in LUT range
 	{
@@ -332,7 +332,7 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 		LUT_coord.xy = (LUT_coord.xy * fLUT_Resolution - LUT_coord.xy + 0.5) * texel_size;
 		LUT_coord.z *= (fLUT_Resolution - 1);
 	
-		const float lerp_factor = frac(LUT_coord.z);
+		float lerp_factor = frac(LUT_coord.z);
 		LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
 		c = lerp(tex2D(sLUT, LUT_coord.xy).rgb, tex2D(sLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
 
@@ -358,7 +358,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
-	const float luminance = Oklab::Luminance_RGB(color);
+	float luminance = Oklab::Luminance_RGB(color);
 	
 	
 	////Processing
@@ -372,7 +372,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 			: color.b + WBTemperature;
 	}
 	static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
-	const float adapted_luminance = min(2.0 * luminance / PAPER_WHITE, 1.0);
+	float adapted_luminance = min(2.0 * luminance / PAPER_WHITE, 1.0);
 
 
 	//Global adjustments
@@ -404,7 +404,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	const float shadow_weight = get_weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
+	float shadow_weight = get_weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + ShadowBrightness * shadow_weight);
@@ -412,7 +412,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, ShadowTintColor.b + (1 - ShadowTintColorC) * color.b, shadow_weight) * (1 + ShadowSaturation * shadow_weight);
 	}
 	//Highlights
-	const float highlight_weight = get_weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
+	float highlight_weight = get_weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
 	if (highlight_weight != 0.0)
 	{
 		color.r *= (1 + HighlightBrightness * highlight_weight);
@@ -420,7 +420,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, HighlightTintColor.b + (1 - HighlightTintColorC) * color.b, highlight_weight) * (1 + HighlightSaturation * highlight_weight);
 	}
 	//Midtones
-	const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
+	float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
 	if (midtone_weight != 0.0)
 	{
 		color.r *= (1 + MidtoneBrightness * midtone_weight);

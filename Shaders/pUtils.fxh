@@ -22,8 +22,7 @@ float3 cbrt(float3 v)
 {
     return sign(v) * pow(abs(v), 0.33333333);
 }
-//--clerp
-//lerps the shortest way around a circle, assumes angles in radians
+//--clerp, lerps the shortest way between two angles
 float clerp(float v, float t, float w)
 {   
     const float d = v - t;
@@ -32,6 +31,14 @@ float clerp(float v, float t, float w)
         : t;
     return (t - v) * w + v;
 }
-
+//--cdistance, returns the shortest distance between two angles
+float cdistance(float v, float t)
+{   
+    const float d = v - t;
+    d = (abs(d) > PI)
+        ? d - sign(d) * PI
+        : d;
+    return abs(d);
+}
 
 }

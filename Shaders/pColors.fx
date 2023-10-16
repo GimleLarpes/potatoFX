@@ -178,9 +178,9 @@ float get_weight(float v, float t, float s) //value, threshold, curve slope
 float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 {
 	static const float EXPANSION_FACTOR = Oklab::InvNorm_Factor;
-	float2 texel_size = 1.0/fLUT_Resolution;
+	float2 texel_size = 1.0 / fLUT_Resolution;
 	texel_size.x /= fLUT_Resolution;
-	float3 LUT_coord = Oklab::Normalize(c) / LUT_WhitePoint;
+	float3 LUT_coord = c / EXPANSION_FACTOR / LUT_WhitePoint;
 
 	float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
 	
@@ -221,8 +221,8 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	
 	////Processing
 	color = Oklab::RGB_to_Oklab(color);
-	//White balance calculations
-	if (WBTemperature != 0.0 | WBTint != 0.0)
+	//White balance
+	if (WBTemperature != 0.0 || WBTint != 0.0)
 	{
 		color.g = color.g - WBTint;
 		color.b = (WBTint < 0)

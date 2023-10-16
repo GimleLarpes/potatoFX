@@ -319,20 +319,20 @@ float get_weight(float v, float t, float s) //value, threshold, curve slope
 
 float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 {
-	static const float EXPANSION_FACTOR = Oklab::InvNorm_Factor;
+	static const float EXPANSION_FACTOR = Oklab::INVNORM_FACTOR;
 	float2 texel_size = 1.0 / fLUT_Resolution;
 	texel_size.x /= fLUT_Resolution;
 	float3 LUT_coord = c / EXPANSION_FACTOR / LUT_WhitePoint;
 
-	float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
+	const float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
 	
 	if (bounds <= 1.0) //Only apply LUT if value is in LUT range
 	{
-		float3 oc = LUT_coord;
+		const float3 oc = LUT_coord;
 		LUT_coord.xy = (LUT_coord.xy * fLUT_Resolution - LUT_coord.xy + 0.5) * texel_size;
 		LUT_coord.z *= (fLUT_Resolution - 1);
 	
-		float lerp_factor = frac(LUT_coord.z);
+		const float lerp_factor = frac(LUT_coord.z);
 		LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
 		c = lerp(tex2D(sLUT, LUT_coord.xy).rgb, tex2D(sLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
 
@@ -358,7 +358,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
-	float luminance = Oklab::Luminance_RGB(color);
+	const float luminance = Oklab::Luminance_RGB(color);
 	
 	
 	////Processing
@@ -372,7 +372,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 			: color.b + WBTemperature;
 	}
 	static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
-	float adapted_luminance = min(2*luminance / PAPER_WHITE, 1.0);
+	const float adapted_luminance = min(2.0 * luminance / PAPER_WHITE, 1.0);
 
 
 	//Global adjustments
@@ -386,7 +386,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color = Oklab::Oklab_to_LCh(color);
 
 		//Adjustments by hue, do this in LCh
-		//Adjustable hue range(width)? (no, that would just make it too complicated for the user (I think?))
+		//Adjustable hue range(width)? (no) (hue range is 60 degrees)
 		//Create function to do this
 
 		//Convert to Oklab
@@ -404,7 +404,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	float shadow_weight = get_weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
+	const float shadow_weight = get_weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + ShadowBrightness * shadow_weight);
@@ -412,7 +412,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, ShadowTintColor.b + (1 - ShadowTintColorC) * color.b, shadow_weight) * (1 + ShadowSaturation * shadow_weight);
 	}
 	//Highlights
-	float highlight_weight = get_weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
+	const float highlight_weight = get_weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
 	if (highlight_weight != 0.0)
 	{
 		color.r *= (1 + HighlightBrightness * highlight_weight);
@@ -420,7 +420,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, HighlightTintColor.b + (1 - HighlightTintColorC) * color.b, highlight_weight) * (1 + HighlightSaturation * highlight_weight);
 	}
 	//Midtones
-	float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
+	const float midtone_weight = max(1 - (shadow_weight + highlight_weight), 0.0);
 	if (midtone_weight != 0.0)
 	{
 		color.r *= (1 + MidtoneBrightness * midtone_weight);

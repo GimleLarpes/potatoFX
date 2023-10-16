@@ -20,7 +20,7 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
 	static const float PI = 3.1415927;
-	static const float INVNORM_FACTOR = Oklab::InvNorm_Factor;
+	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
 	
 	float t = FrameCount * 0.2783;

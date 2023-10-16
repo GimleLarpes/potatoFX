@@ -76,7 +76,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	float m;
 	if (DitheringFactor != 0.0)
 	{
-		static const float n = Oklab::InvNorm_Factor;
+		static const float n = Oklab::INVNORM_FACTOR;
 		const int2 xy = int2(texcoord * ReShade::ScreenSize) % 2.0;
 		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * n * DitheringFactor;
 	}
@@ -85,10 +85,10 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 		m = 0.0;
 	}
 
-	float luminance = color.r + m;
-	float luminance_norm = Oklab::Normalize(luminance);
-	static const float PW_COMPENSATION = rcp(1 + Oklab::InvNorm_Factor - Oklab::HDR_PAPER_WHITE);
-	float palette_control = PW_COMPENSATION * PaletteBalance;
+	const float luminance = color.r + m;
+	const float luminance_norm = Oklab::Normalize(luminance);
+	static const float PW_COMPENSATION = rcp(1 + Oklab::INVNORM_FACTOR - Oklab::HDR_PAPER_WHITE);
+	const float palette_control = PW_COMPENSATION * PaletteBalance;
 	float hue_range;
 	float hue_offset = 0.0;
 	

@@ -36,13 +36,13 @@ namespace Oklab
     
     //Invnorm factor
     #if BUFFER_COLOR_SPACE == 2     //scRGB
-        static const float InvNorm_Factor = 43.75;//I thought it was 8.0, but warthunder has it at 43.75x=3500nits?
+        static const float INVNORM_FACTOR = 43.75;//I thought it was 8.0, but warthunder has it at 43.75x=3500nits?
     #elif BUFFER_COLOR_SPACE == 3   //HDR10 ST2084
-        static const float InvNorm_Factor = 10000.0 / SDR_WHITEPOINT;
+        static const float INVNORM_FACTOR = 10000.0 / SDR_WHITEPOINT;
     #elif BUFFER_COLOR_SPACE == 4   //HDR10 HLG
-        static const float InvNorm_Factor = 1000.0 / SDR_WHITEPOINT;
+        static const float INVNORM_FACTOR = 1000.0 / SDR_WHITEPOINT;
     #else                           //Assume SDR
-        static const float InvNorm_Factor = 1.0;
+        static const float INVNORM_FACTOR = 1.0;
     #endif
 
 
@@ -214,7 +214,7 @@ namespace Oklab
     }
     float3 Saturate_RGB(float3 c)
     {
-        return float3(clamp(c.r, 0.0, InvNorm_Factor), clamp(c.g, 0.0, InvNorm_Factor), clamp(c.b, 0.0, InvNorm_Factor));
+        return float3(clamp(c.r, 0.0, INVNORM_FACTOR), clamp(c.g, 0.0, INVNORM_FACTOR), clamp(c.b, 0.0, INVNORM_FACTOR));
     }
     float Luminance_RGB(float3 c)
     {
@@ -224,11 +224,11 @@ namespace Oklab
     //Utility functions for HDR
     float Normalize(float v)
     {   
-        return v / InvNorm_Factor;
+        return v / INVNORM_FACTOR;
     }
     float3 Normalize(float3 v)
     {   
-        return v / InvNorm_Factor;
+        return v / INVNORM_FACTOR;
     }
 
     //Transformations

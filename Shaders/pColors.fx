@@ -307,7 +307,7 @@ uniform bool UseApproximateTransforms <
 
 
 
-float get_weight(float v, float t, float s) //value, threshold, curve slope
+float get_Weight(float v, float t, float s) //value, threshold, curve slope
 {
 	v = (v - t) * s;
 	return (v > 1)
@@ -347,6 +347,21 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Martymcfly/Pascal Glitcher
 	return c;
 }
 
+float3 Manipulate_By_Hue(float3 color, float3 hue, float hue_shift, float hue_saturation, float hue_brightness)
+{
+	float weight = max(1 - pUtils::cdistance(color.z, hue.z), 0.0); //Linear with coverage of ~60deg
+
+	if (weight != 0.0)
+	{
+		color.z += hue_shift * weight;
+		color.xy *= float2((1 + hue_brightness), (1 + hue_saturation)) * weight;
+
+		color = Oklab::Saturate_LCh(color);
+	}
+
+	return color;
+}
+
 
 
 float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
@@ -382,8 +397,20 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Advanced color correction
 	#if ENABLE_ADVANCED_COLOR_CORRECTION == true
-	
 		color = Oklab::Oklab_to_LCh(color);
+
+		//Convert target hues to LCh
+		Hue1 = Oklab::RGB_to_LCh(Hue1);
+		Hue2 = Oklab::RGB_to_LCh(Hue2);
+		Hue3 = Oklab::RGB_to_LCh(Hue3);
+		Hue4 = Oklab::RGB_to_LCh(Hue4);
+		Hue5 = Oklab::RGB_to_LCh(Hue5);
+		Hue6 = Oklab::RGB_to_LCh(Hue6);
+
+		//Apply hue processing
+		color = Manipulate_By_Hue(color, Hue1, Hue1Shift * PI, Hue1Saturation, Hue1Brightness);
+
+		//Hue1, Hue1Shift, Hue1Saturation, Hue1Brightness
 
 		//Adjustments by hue, do this in LCh
 		//Adjustable hue range(width)? (no) (hue range is 60 degrees)
@@ -404,7 +431,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	float shadow_weight = get_weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
+	float shadow_weight = get_Weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + ShadowBrightness * shadow_weight);
@@ -412,7 +439,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, ShadowTintColor.b + (1 - ShadowTintColorC) * color.b, shadow_weight) * (1 + ShadowSaturation * shadow_weight);
 	}
 	//Highlights
-	float highlight_weight = get_weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
+	float highlight_weight = get_Weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
 	if (highlight_weight != 0.0)
 	{
 		color.r *= (1 + HighlightBrightness * highlight_weight);

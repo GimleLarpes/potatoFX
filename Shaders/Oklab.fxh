@@ -205,10 +205,12 @@ namespace Oklab
     //Utility functions for Oklab
     float3 Saturate_LCh(float3 c)
     {
-        c.y = clamp(c.y, 0.0, 1.0);
+        c.y = saturate(c.y);
         c.z = (c.z < 0.0)
             ? c.z + 2 * PI
-            : c.z;
+            : (c.z > 2 * PI);
+                ? c.z - 2*PI
+                : c.z
         return c;
     }
     float get_Oklab_Chromacity(float3 c)

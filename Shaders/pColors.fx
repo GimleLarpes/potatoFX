@@ -355,8 +355,8 @@ float3 Manipulate_By_Hue(float3 color, float3 hue, float hue_shift, float hue_sa
 	if (weight != 0.0)
 	{
 		color.z += hue_shift * weight;
-		color.xy *= 1 + float2(hue_brightness, hue_saturation) * weight;
-
+		color.xy *= 1 + float2(hue_brightness, hue_saturation) * weight; //How to fix hues in gradients going nuclear?
+																		//Or is it just a problem to live with?
 		color = Oklab::Saturate_LCh(color);
 	}
 
@@ -373,7 +373,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
-	float luminance = Oklab::Luminance_RGB(color);
+	float luma = Oklab::Luma_RGB(color);
 	color = Oklab::RGB_to_Oklab(color);
 
 	
@@ -387,7 +387,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 			: color.b + WBTemperature;
 	}
 	static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
-	float adapted_luminance = min(2.0 * luminance / PAPER_WHITE, 1.0);
+	float adapted_luma = min(2.0 * luma / PAPER_WHITE, 1.0);
 
 
 	//Global adjustments
@@ -420,7 +420,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	float shadow_weight = get_Weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
+	float shadow_weight = get_Weight(adapted_luma, ShadowThreshold, -ShadowCurveSlope);
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + ShadowBrightness * shadow_weight);
@@ -428,7 +428,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, ShadowTintColor.b + (1 - ShadowTintColorC) * color.b, shadow_weight) * (1 + ShadowSaturation * shadow_weight);
 	}
 	//Highlights
-	float highlight_weight = get_Weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
+	float highlight_weight = get_Weight(adapted_luma, HighlightThreshold, HighlightCurveSlope);
 	if (highlight_weight != 0.0)
 	{
 		color.r *= (1 + HighlightBrightness * highlight_weight);

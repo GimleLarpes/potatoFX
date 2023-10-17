@@ -13,7 +13,7 @@ Generates gaussian chroma noise to simulate amplifier noise in digital cameras.
 Shader with tools for advanced color correction and grading.
 - White Balance adjustment
 - Brightness and saturation adjustment
-- Levels adjustment and tinting
+- Shadows / midtones / highlights and tinting
 - Adjustment by hue
 - LUTs
 

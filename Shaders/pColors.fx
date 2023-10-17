@@ -370,15 +370,14 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
 	static const float PI = 3.1415927;
 
-	//Do all color-stuff in Oklab color space
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
 	float luminance = Oklab::Luminance_RGB(color);
-	
+	color = Oklab::RGB_to_Oklab(color);
+
 	
 	////Processing
-	color = Oklab::RGB_to_Oklab(color);
 	//White balance
 	if (WBTemperature != 0.0 || WBTint != 0.0)
 	{
@@ -396,29 +395,18 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color.gb *= (1 + GlobalSaturation);
 
 
-	////Advanced color correction
+	////Advanced color correction - Adjustments by hue
 	#if ENABLE_ADVANCED_COLOR_CORRECTION == true
 		color = Oklab::Oklab_to_LCh(color);
 
-		//Convert target hues to LCh
-		Hue1 = Oklab::RGB_to_LCh(Hue1);
-		Hue2 = Oklab::RGB_to_LCh(Hue2);
-		Hue3 = Oklab::RGB_to_LCh(Hue3);
-		Hue4 = Oklab::RGB_to_LCh(Hue4);
-		Hue5 = Oklab::RGB_to_LCh(Hue5);
-		Hue6 = Oklab::RGB_to_LCh(Hue6);
+		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue1), Hue1Shift * PI, Hue1Saturation, Hue1Brightness);
+		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue2), Hue2Shift * PI, Hue2Saturation, Hue2Brightness);
+		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue3), Hue3Shift * PI, Hue3Saturation, Hue3Brightness);
+		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue4), Hue4Shift * PI, Hue4Saturation, Hue4Brightness);
+		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue5), Hue5Shift * PI, Hue5Saturation, Hue5Brightness);
+		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue6), Hue6Shift * PI, Hue6Saturation, Hue6Brightness);
 
-		//Apply hue processing
-		color = Manipulate_By_Hue(color, Hue1, Hue1Shift * PI, Hue1Saturation, Hue1Brightness);
-
-		//Hue1, Hue1Shift, Hue1Saturation, Hue1Brightness
-
-		//Adjustments by hue, do this in LCh
-		//Adjustable hue range(width)? (no) (hue range is 60 degrees)
-		//Create function to do this
-
-		//Convert to Oklab
-		color = Oklab::LCh_to_Oklab(Oklab::Saturate_LCh(color));
+		color = Oklab::LCh_to_Oklab(color);
 	#endif
 
 
@@ -455,7 +443,6 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.g = lerp(color.g, MidtoneTintColor.g + (1 - MidtoneTintColorC) * color.g, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
 		color.b = lerp(color.b, MidtoneTintColor.b + (1 - MidtoneTintColorC) * color.b, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
 	}
-	//Convert to linear
 	color = Oklab::Saturate_RGB(Oklab::Oklab_to_RGB(color));
 
 
@@ -468,7 +455,6 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_Linear_to_DisplayFormat(color)
 		: Oklab::Linear_to_DisplayFormat(color);
-	
 	return color.rgb;
 }
 

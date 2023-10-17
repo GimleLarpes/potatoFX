@@ -203,12 +203,12 @@ namespace Oklab
     }
     
     //Utility functions for Oklab
-    float3 Saturate_LCh(float3 c)
+    float3 Saturate_LCh(float3 c) //saturates chromacity and keeps hue in -pi, pi
     {
         c.y = saturate(c.y);
-        c.z = (c.z < 0.0)
+        c.z = (c.z < -PI)
             ? c.z + 2 * PI
-            : (c.z > 2 * PI)
+            : (c.z > PI)
                 ? c.z - 2*PI
                 : c.z;
         return c;

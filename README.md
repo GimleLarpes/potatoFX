@@ -1,11 +1,11 @@
-# Note
-## All potatoFX shaders are HDR compatible
+# potatoFX
+### All potatoFX shaders are HDR compatible
 Supported HDR formats:  | **HDR10** | **HLG** | **scRGB** |
 
 <br/><br/>
 
 
-# Manifest
+# Shaders
 ## pColorNoise
 Generates gaussian chroma noise to simulate amplifier noise in digital cameras.
 

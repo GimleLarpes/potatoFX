@@ -67,11 +67,11 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	static const float PI = 3.1415927;
 
-	//Do all color-stuff in Oklab color space
 	static const float3 BaseColor = Oklab::RGB_to_LCh(BaseColor);
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_LCh(color)
 		: Oklab::DisplayFormat_to_LCh(color);
+
 
 	//Dithering
 	float m;
@@ -131,7 +131,6 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_LCh_to_DisplayFormat(color)
 		: Oklab::LCh_to_DisplayFormat(color);
-	
 	return color.rgb;
 }
 

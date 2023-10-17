@@ -443,13 +443,13 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.g = lerp(color.g, MidtoneTintColor.g + (1 - MidtoneTintColorC) * color.g, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
 		color.b = lerp(color.b, MidtoneTintColor.b + (1 - MidtoneTintColorC) * color.b, midtone_weight) * (1 + MidtoneSaturation * midtone_weight);
 	}
-	color = Oklab::Saturate_RGB(Oklab::Oklab_to_RGB(color));
+	color = Oklab::Oklab_to_RGB(color);
 
 
 	////LUT
 	if (EnableLUT)
 	{
-		color = Apply_LUT(color);
+		color = Apply_LUT(Oklab::Saturate_RGB(color));
 	}
 
 	color = (UseApproximateTransforms)

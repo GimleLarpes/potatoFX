@@ -37,9 +37,9 @@ uniform float GlobalBrightness < __UNIFORM_SLIDER_FLOAT1
 
 //Advanced color correction
 #ifndef ENABLE_ADVANCED_COLOR_CORRECTION
-	#define ENABLE_ADVANCED_COLOR_CORRECTION false
+	#define ENABLE_ADVANCED_COLOR_CORRECTION 0
 #endif
-#if ENABLE_ADVANCED_COLOR_CORRECTION == true
+#if ENABLE_ADVANCED_COLOR_CORRECTION == 1
 	//Hue 1
 	uniform float3 Hue1 < __UNIFORM_COLOR_FLOAT3
 		ui_label = "Hue 1";
@@ -355,7 +355,7 @@ float3 Manipulate_By_Hue(float3 color, float3 hue, float hue_shift, float hue_sa
 	if (weight != 0.0)
 	{
 		color.z += hue_shift * weight;
-		color.xy *= float2((1 + hue_brightness), (1 + hue_saturation)) * weight;
+		color.xy *= 1 + float2(hue_brightness, hue_saturation) * weight;
 
 		color = Oklab::Saturate_LCh(color);
 	}
@@ -396,16 +396,16 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 
 	////Advanced color correction - Adjustments by hue
-	#if ENABLE_ADVANCED_COLOR_CORRECTION == true
+	#if ENABLE_ADVANCED_COLOR_CORRECTION == 1
 		color = Oklab::Oklab_to_LCh(color);
-
+	
 		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue1), Hue1Shift * PI, Hue1Saturation, Hue1Brightness);
 		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue2), Hue2Shift * PI, Hue2Saturation, Hue2Brightness);
 		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue3), Hue3Shift * PI, Hue3Saturation, Hue3Brightness);
 		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue4), Hue4Shift * PI, Hue4Saturation, Hue4Brightness);
 		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue5), Hue5Shift * PI, Hue5Saturation, Hue5Brightness);
 		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue6), Hue6Shift * PI, Hue6Saturation, Hue6Brightness);
-
+	
 		color = Oklab::LCh_to_Oklab(color);
 	#endif
 

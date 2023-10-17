@@ -208,9 +208,9 @@ namespace Oklab
         c.y = saturate(c.y);
         c.z = (c.z < 0.0)
             ? c.z + 2 * PI
-            : (c.z > 2 * PI);
+            : (c.z > 2 * PI)
                 ? c.z - 2*PI
-                : c.z
+                : c.z;
         return c;
     }
     float get_Oklab_Chromacity(float3 c)

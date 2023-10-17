@@ -397,13 +397,31 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	////Advanced color correction - Adjustments by hue
 	#if ENABLE_ADVANCED_COLOR_CORRECTION == 1
 		color = Oklab::Oklab_to_LCh(color);
-	
-		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue1), Hue1Shift * PI, Hue1Saturation, Hue1Brightness);
-		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue2), Hue2Shift * PI, Hue2Saturation, Hue2Brightness);
-		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue3), Hue3Shift * PI, Hue3Saturation, Hue3Brightness);
-		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue4), Hue4Shift * PI, Hue4Saturation, Hue4Brightness);
-		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue5), Hue5Shift * PI, Hue5Saturation, Hue5Brightness);
-		color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue6), Hue6Shift * PI, Hue6Saturation, Hue6Brightness);
+
+		if (Hue1Shift != 0.0 || Hue1Saturation != 0.0 || Hue1Brightness != 0.0)
+		{
+			color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue1), Hue1Shift * PI, Hue1Saturation, Hue1Brightness);
+		}
+		if (Hue2Shift != 0.0 || Hue2Saturation != 0.0 || Hue2Brightness != 0.0)
+		{
+			color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue2), Hue2Shift * PI, Hue2Saturation, Hue2Brightness);
+		}
+		if (Hue3Shift != 0.0 || Hue3Saturation != 0.0 || Hue3Brightness != 0.0)
+		{
+			color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue3), Hue3Shift * PI, Hue3Saturation, Hue3Brightness);
+		}
+		if (Hue4Shift != 0.0 || Hue4Saturation != 0.0 || Hue3Brightness != 0.0)
+		{
+			color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue4), Hue4Shift * PI, Hue4Saturation, Hue4Brightness);
+		}
+		if (Hue5Shift != 0.0 || Hue5Saturation != 0.0 || Hue5Brightness != 0.0)
+		{
+			color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue5), Hue5Shift * PI, Hue5Saturation, Hue5Brightness);
+		}
+		if (Hue6Shift != 0.0 || Hue6Saturation != 0.0 || Hue6Brightness != 0.0)
+		{
+			color = Manipulate_By_Hue(color, Oklab::RGB_to_LCh(Hue6), Hue6Shift * PI, Hue6Saturation, Hue6Brightness);
+		}
 	
 		color = Oklab::LCh_to_Oklab(color);
 	#endif

@@ -272,7 +272,7 @@ uniform float HighlightCurveSlope < __UNIFORM_SLIDER_FLOAT1
 uniform bool EnableLUT <
 	ui_type = "bool";
 	ui_label = "Enable LUT";
-    ui_tooltip = "Apply a LUT as a final processing step";
+    ui_tooltip = "Apply a LUT as a final processing step\n\nIncrease HDR_PEAK_LUMINANCE_NITS if enabling this causes clipping";
 	ui_category = "LUT";
 > = false;
 

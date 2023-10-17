@@ -34,7 +34,7 @@ float clerp(float v, float t, float w)
 //--cdistance, returns the shortest distance between two angles
 float cdistance(float v, float t)
 {   
-    const float d = v - t;
+    float d = v - t;
     d = (abs(d) > PI)
         ? d - sign(d) * PI
         : d;

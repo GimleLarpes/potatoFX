@@ -282,7 +282,7 @@ uniform float LUT_WhitePoint < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "LUT White point";
 	ui_tooltip = "Adjusts what range of brightness LUT affects, useful when applying SDR LUTs to HDR\n\n(0= apply LUT to nothing, 1= apply LUT to entire image)";
 	ui_category = "LUT";
-> = 1.0;
+> = 0.5;
 #else
 	static const float LUT_WhitePoint = 1.0;
 #endif

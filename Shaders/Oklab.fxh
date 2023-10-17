@@ -216,7 +216,7 @@ namespace Oklab
     {
         return float3(clamp(c.r, 0.0, INVNORM_FACTOR), clamp(c.g, 0.0, INVNORM_FACTOR), clamp(c.b, 0.0, INVNORM_FACTOR));
     }
-    float Luminance_RGB(float3 c)
+    float Luma_RGB(float3 c)
     {
         return dot(c, float3(0.2126, 0.7152, 0.0722));
     }

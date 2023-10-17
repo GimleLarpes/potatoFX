@@ -64,6 +64,7 @@ static const int bayer[2 * 2] = {
 float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
+	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	static const float PI = 3.1415927;
 
 	//Do all color-stuff in Oklab color space
@@ -77,7 +78,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	if (DitheringFactor != 0.0)
 	{
 		int2 xy = int2(texcoord * ReShade::ScreenSize) % 2.0;
-		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * Oklab::INVNORM_FACTOR * DitheringFactor;
+		m = (bayer[xy.x + 2 * xy.y] * 0.25 - 0.5) * INVNORM_FACTOR * DitheringFactor;
 	}
 	else
 	{
@@ -85,8 +86,8 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	}
 
 	float luminance = color.r + m;
-	float luminance_norm = Oklab::Normalize(luminance);
-	static const float PW_COMPENSATION = rcp(1 + Oklab::INVNORM_FACTOR - Oklab::HDR_PAPER_WHITE);
+	float luminance_norm = luminance / INVNORM_FACTOR;
+	static const float PW_COMPENSATION = rcp(1 + INVNORM_FACTOR - Oklab::HDR_PAPER_WHITE);
 	static const float PALETTE_CONTROL = PW_COMPENSATION * PaletteBalance;
 	float hue_range;
 	float hue_offset = 0.0;

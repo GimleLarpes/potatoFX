@@ -1,15 +1,15 @@
-## Note
-### All potatoFX shaders are HDR compatible
+# Note
+## All potatoFX shaders are HDR compatible
 Supported HDR formats:  | **HDR10** | **HLG** | **scRGB** |
 
 <br/><br/>
 
 
-## Manifest
-### pColorNoise
+# Manifest
+## pColorNoise
 Generates gaussian chroma noise to simulate amplifier noise in digital cameras.
 
-### pColors
+## pColors
 Shader with tools for advanced color correction and grading.
 - White Balance adjustment
 - Brightness and saturation adjustment
@@ -17,5 +17,5 @@ Shader with tools for advanced color correction and grading.
 - Adjustment by hue
 - LUTs
 
-### pPalettePosterize
+## pPalettePosterize
 Posterizes an image to a customizable color palette.

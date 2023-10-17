@@ -68,7 +68,6 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 	    float uniform_noise1 = frac(sin(seed) * 413.458333333 * t);
 	    float uniform_noise2 = frac(cos(seed) * 524.894736842 * t);
 
-	    //Box-Muller transform
 	    uniform_noise1 = (uniform_noise1 < 0.0001) ? 0.0001 : uniform_noise1; //fix log(0)
 		
 	    float r = sqrt(-log(uniform_noise1));

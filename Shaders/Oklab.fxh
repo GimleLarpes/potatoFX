@@ -36,7 +36,10 @@ namespace Oklab
     
     //Invnorm factor
     #if BUFFER_COLOR_SPACE == 2     //scRGB
-        static const float INVNORM_FACTOR = 43.75;//I thought it was 8.0, but warthunder has it at 43.75x=3500nits?
+        #ifndef HDR_PEAK_LUMINANCE_NITS
+            #define HDR_PEAK_LUMINANCE_NITS 3500
+        #endif
+        static const float INVNORM_FACTOR = HDR_PEAK_LUMINANCE_NITS / SDR_WHITEPOINT;
     #elif BUFFER_COLOR_SPACE == 3   //HDR10 ST2084
         static const float INVNORM_FACTOR = 10000.0 / SDR_WHITEPOINT;
     #elif BUFFER_COLOR_SPACE == 4   //HDR10 HLG

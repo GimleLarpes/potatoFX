@@ -355,8 +355,7 @@ float3 Manipulate_By_Hue(float3 color, float3 hue, float hue_shift, float hue_sa
 	if (weight != 0.0)
 	{
 		color.z += hue_shift * weight;
-		color.xy *= 1 + float2(hue_brightness, hue_saturation) * weight; //How to fix hues in gradients going nuclear?
-																		//Or is it just a problem to live with?
+		color.xy *= 1 + float2(hue_brightness, hue_saturation) * weight; 
 		color = Oklab::Saturate_LCh(color);
 	}
 

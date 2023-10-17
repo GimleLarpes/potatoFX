@@ -8,17 +8,28 @@
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
+
 uniform float Strength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_tooltip = "Noise strength";
 	ui_category = "Settings";
 > = 0.05;
+uniform bool UseApproximateTransforms <
+	ui_type = "bool";
+	ui_label = "Fast colorspace transform";
+    ui_tooltip = "Use less accurate approximations instead of the full transform functions";
+	ui_category = "Performance";
+> = false;
 
 uniform int FrameCount < source = "framecount"; >; //Use to vary noise
 
 float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
+	color = (UseApproximateTransforms)
+		? Oklab::Fast_DisplayFormat_to_Linear(color)
+		: Oklab::DisplayFormat_to_Linear(color);
+	
 	static const float PI = 3.1415927;
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
@@ -46,6 +57,9 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 	                                                            //divide Strength by 2 to reduce sensitivity and set maximum SNR to 50%.
 	color.rgb = color.rgb * (1-weight) + float3(gauss_noise1, gauss_noise2, gauss_noise3) * weight;
 	
+	color = (UseApproximateTransforms)
+		? Oklab::Fast_Linear_to_DisplayFormat(color)
+		: Oklab::Linear_to_DisplayFormat(color);
 	return color.rgb;
 }
 

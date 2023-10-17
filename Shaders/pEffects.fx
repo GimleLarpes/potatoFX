@@ -86,7 +86,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
         }
         else
         {   //Film grain
-            color.rgb = color.rgb * (1-weight) + gauss_noise1 * weight;
+            color.rgb = Oklab::Saturate_RGB(color.rgb * (1-weight) + (gauss_noise1 - 0.5) * weight);
         }
     }
 

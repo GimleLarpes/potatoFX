@@ -1,12 +1,38 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // pEffects.fx by Gimle Larpes
-// A high performance mega shader with the most common effects.
+// A high performance all-in-one shader with the most common effects.
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
 
+
+//Vignette
+uniform float VignetteStrength < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "Vignette amount";
+    ui_tooltip = "Amount of vignetting to apply";
+	ui_category = "Vignette";
+> = 0.0;
+uniform float VignetteInnerRadius < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 2.0;
+    ui_label = "Inner radius";
+    ui_tooltip = "Inner vignette radius";
+	ui_category = "Vignette";
+> = 1.0;
+uniform float VignetteOuterRadius < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 2.0;
+    ui_label = "Outer radius";
+    ui_tooltip = "Outer vignette radius";
+	ui_category = "Vignette";
+> = 1.25;
+uniform float VignetteWidth < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "Width";
+    ui_tooltip = "Controls the shape of vignette";
+	ui_category = "Vignette";
+> = 0.0;
 
 //Noise
 uniform int NoiseType < __UNIFORM_RADIO_INT1
@@ -17,7 +43,8 @@ uniform int NoiseType < __UNIFORM_RADIO_INT1
 > = 0;
 uniform float NoiseStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
-    ui_tooltip = "Noise strength";
+    ui_label = "Noise amount";
+    ui_tooltip = "Amount of noise to apply";
 	ui_category = "Noise";
 > = 0.0;
 
@@ -56,9 +83,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     if (NoiseStrength != 0.0)
     {
         static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
-        static const float SPEED = (NoiseType == 1)
-            ? 60
-            : 1;
+        static const float SPEED = (NoiseType == 1) ? 60 : 1;
 	
 	    float t = FrameCount * 0.456035462415 * SPEED;
 	    t %= 263; t += 37;
@@ -97,7 +122,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 }
 
 technique Effects <ui_tooltip = 
-"A high performance mega shader with the most common effects.\n\n"
+"A high performance all-in-one shader with the most common effects.\n\n"
 "(HDR compatible)";>
 {
 	pass

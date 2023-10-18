@@ -7,6 +7,21 @@
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
 
+//Blur
+uniform float BlurStrength < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "Blur amount";
+    ui_tooltip = "Amount of blur to apply";
+	ui_category = "Blur";
+> = 0.0;
+uniform int BlurType < __UNIFORM_RADIO_INT1
+	ui_label = "Blur type";
+	ui_tooltip = "Type of blur to use";
+	ui_items = "Gaussian      (high quality)\0Box           (fast)\0";
+	ui_category = "Blur";
+> = 0;
+
+
 
 //Vignette
 uniform float VignetteStrength < __UNIFORM_SLIDER_FLOAT1
@@ -35,18 +50,18 @@ uniform float VignetteWidth < __UNIFORM_SLIDER_FLOAT1
 > = 1.0;
 
 //Noise
-uniform int NoiseType < __UNIFORM_RADIO_INT1
-	ui_label = "Noise type";
-	ui_tooltip = "Type of noise to use";
-	ui_items = "Film grain\0Color noise\0";
-	ui_category = "Noise";
-> = 0;
 uniform float NoiseStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_label = "Noise amount";
     ui_tooltip = "Amount of noise to apply";
 	ui_category = "Noise";
 > = 0.0;
+uniform int NoiseType < __UNIFORM_RADIO_INT1
+	ui_label = "Noise type";
+	ui_tooltip = "Type of noise to use";
+	ui_items = "Film grain\0Color noise\0";
+	ui_category = "Noise";
+> = 0;
 
 
 
@@ -75,6 +90,11 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	
     ////Effects
+    //Blur
+    //Box blur
+
+
+
     //Vignette
     if (VignetteStrength != 0.0)
     {

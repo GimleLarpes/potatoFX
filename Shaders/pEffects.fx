@@ -91,8 +91,11 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 	
     ////Effects
     //Blur
-    //Box blur
-
+    if (BlurStrength != 0.0)
+    {
+        //Box blur
+        //Code
+    }
 
 
     //Vignette

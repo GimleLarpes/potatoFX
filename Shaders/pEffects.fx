@@ -16,23 +16,23 @@ uniform float VignetteStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Vignette";
 > = 0.0;
 uniform float VignetteInnerRadius < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 2.0;
+	ui_min = 0.0; ui_max = 1.25;
     ui_label = "Inner radius";
     ui_tooltip = "Inner vignette radius";
 	ui_category = "Vignette";
-> = 1.0;
+> = 0.25;
 uniform float VignetteOuterRadius < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 2.0;
+	ui_min = 0.0; ui_max = 1.5;
     ui_label = "Outer radius";
     ui_tooltip = "Outer vignette radius";
 	ui_category = "Vignette";
-> = 1.25;
+> = 0.75;
 uniform float VignetteWidth < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 1.0;
+	ui_min = 0.0; ui_max = 2.0;
     ui_label = "Width";
     ui_tooltip = "Controls the shape of vignette";
 	ui_category = "Vignette";
-> = 0.0;
+> = 1.0;
 
 //Noise
 uniform int NoiseType < __UNIFORM_RADIO_INT1
@@ -76,7 +76,11 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 	
     ////Effects
     //Vignette
-
+    if (VignetteStrength != 0.0)
+    {
+        float weight = clamp((length(float2(abs(texcoord.x - 0.5) * rcp(VignetteWidth), abs(texcoord.y - 0.5))) - VignetteInnerRadius) / (VignetteOuterRadius - VignetteInnerRadius), 0.0, 1.0);
+        color.rgb *= 1 - VignetteStrength * weight;
+    }
 
 
     //Noise
@@ -97,7 +101,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 		
 	    float r = sqrt(-log(uniform_noise1));
 	    r = (uniform_noise1 < 0.0001) ? PI : r; //fix log(0) - PI happened to be the right answer for uniform_noise == ~ 0.0000517
-	    float theta = (2.0 * PI) * uniform_noise2;
+	    float theta = 2.0 * PI * uniform_noise2;
 	
 	    float gauss_noise1 = r * cos(theta);
 	    float weight = NoiseStrength * NOISE_CURVE / (luma * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luma to simulate a wider dynamic range

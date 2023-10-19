@@ -156,7 +156,7 @@ float3 GaussianBlur(sampler s, float4 vpos, float2 texcoord, float size)
 
 
 //Passes
-float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //REMEMBER TO CONVERT TO LINEAR BEFORE PROCESSING!
+float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //REMEMBER TO CONVERT TO LINEAR BEFORE PROCESSING! (might have to do a ToLinear pass that is then sampled from?)
 {
     float3 color = GaussianBlur(ReShade::BackBuffer, vpos, texcoord, BlurStrength);
     return color;

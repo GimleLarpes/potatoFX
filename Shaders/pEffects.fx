@@ -170,7 +170,7 @@ float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) 
 float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
-	color = (UseApproximateTransforms)
+	color = (UseApproximateTransforms)  //This needs to be moved to the first blur pass, not a new pass though as that alone adds 0.800ms
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
 	

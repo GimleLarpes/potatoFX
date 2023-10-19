@@ -14,12 +14,12 @@ uniform float BlurStrength < __UNIFORM_SLIDER_FLOAT1
     ui_tooltip = "Amount of blur to apply";
 	ui_category = "Blur";
 > = 0.0;
-uniform int BlurType < __UNIFORM_RADIO_INT1
-	ui_label = "Blur type";
-	ui_tooltip = "Type of blur to use";
-	ui_items = "Gaussian      (high quality)\0Box           (fast)\0";
+uniform int BlurQuality < __UNIFORM_RADIO_INT1
+	ui_label = "Blur quality";
+	ui_tooltip = "Quality of gaussian blur";
+	ui_items = "High quality\0Medium quality\0Fast\0";
 	ui_category = "Blur";
-> = 0;
+> = 2;
 
 
 
@@ -75,9 +75,97 @@ uniform bool UseApproximateTransforms <
 
 uniform int FrameCount < source = "framecount"; >;
 
+texture pGaussianBlurTexH < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
+sampler spGaussianBlurTexH { Texture = pGaussianBlurTexH;};
+texture pGaussianBlurTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
+sampler spGaussianBlurTex { Texture = pGaussianBlurTex;};
+
+
 //Functions
+float3 GaussianBlur(sampler s, float4 vpos, float2 texcoord, float size)
+{
+    float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float2 step_length = TEXEL_SIZE * size;
 
 
+    //Sample points
+    //Fast (low quality)
+    //Inner ring
+    float3 color = tex2D(s, texcoord).rgb * 0.089728;
+    color += tex2D(s, texcoord + step_length * float2(0.0, 10.6667)).rgb * 0.071848;
+    color += tex2D(s, texcoord + step_length * float2(10.1446, 3.2962)).rgb * 0.071848;
+    color += tex2D(s, texcoord + step_length * float2(6.2697, -8.6295)).rgb * 0.071848;
+    color += tex2D(s, texcoord + step_length * float2(-6.2697, -8.6295)).rgb * 0.071848;
+    color += tex2D(s, texcoord + step_length * float2(-10.1446, 3.2962)).rgb * 0.071848;
+
+    
+    //Preparing for own (hardcoded)distribution
+    if (BlurQuality == 0) //High quality (3 rings)
+    {
+        //Third outermost ring
+        color += tex2D(s, texcoord + step_length * float2(0.0, 32)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(13.0156, 29.2335)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(23.7806, 21.4122)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(30.4338, 9.8885)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(31.8247, -3.3449)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(27.7128, -16)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(18.8091, -25.8885)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(6.6532, -31.3007)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(-6.6532, -31.3007)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(-18.8091, -25.8885)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(-27.7128, -16)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(-31.8247, -3.3449)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(-30.4338, 9.8885)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(-23.7806, 21.4122)).rgb * 0.012143;
+        color += tex2D(s, texcoord + step_length * float2(-13.0156, 29.2335)).rgb * 0.012143;
+    }
+    if (BlurQuality < 2) //Medium quality (2 rings)
+    {
+        //Second ring
+        color += tex2D(s, texcoord + step_length * float2(0, 21.3333)).rgb * 0.036888;
+        color += tex2D(s, texcoord + step_length * float2(12.5394, 17.259)).rgb * 0.036888;
+        color += tex2D(s, texcoord + step_length * float2(20.2892, 6.5924)).rgb * 0.036888;
+        color += tex2D(s, texcoord + step_length * float2(20.2892, -6.5924)).rgb * 0.036888;
+        color += tex2D(s, texcoord + step_length * float2(12.5394, -17.259)).rgb * 0.036888;
+        color += tex2D(s, texcoord + step_length * float2(0.0, -21.3333)).rgb * 0.036888;
+        color += tex2D(s, texcoord + step_length * float2(-12.5394, -17.259)).rgb * 0.036888;
+        color += tex2D(s, texcoord + step_length * float2(-20.2892, -6.5924)).rgb * 0.036888;
+        color += tex2D(s, texcoord + step_length * float2(-20.2892, 6.5924)).rgb * 0.036888;
+        color += tex2D(s, texcoord + step_length * float2(-12.5394, 17.259)).rgb * 0.036888;
+    }
+
+    float brightness_compensation;
+    switch (BlurQuality)
+    {
+        case 0:
+        {
+            brightness_compensation = 1.0;
+        } break;
+        case 1:
+        {
+            brightness_compensation = 1.225;
+        } break;
+        case 2:
+        {
+            brightness_compensation = 2.25;
+        } break;
+    }
+
+    return color * brightness_compensation;
+}
+
+
+//Passes
+float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //REMEMBER TO CONVERT TO LINEAR BEFORE PROCESSING!
+{
+    float3 color = GaussianBlur(ReShade::BackBuffer, vpos, texcoord, BlurStrength);
+    return color;
+}
+float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = GaussianBlur(spGaussianBlurTexH, vpos, texcoord, BlurStrength);
+    return color;
+}
 
 float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
@@ -94,7 +182,9 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     if (BlurStrength != 0.0)
     {
         //Box blur
-        //Code
+        //Code, uses texture generated by gaussianblur passes
+        //Gaussian blur
+        color = tex2D(spGaussianBlurTex, texcoord).rgb;//Try to find a way to reuse this texture? (for DOF)
     }
 
 
@@ -152,7 +242,18 @@ technique Effects <ui_tooltip =
 "A high performance all-in-one shader with the most common effects.\n\n"
 "(HDR compatible)";>
 {
+    #if BlurStrength == 0
 	pass
+    {//This is also used in DOF
+        VertexShader = PostProcessVS; PixelShader = GaussianBlurPass1; RenderTarget = pGaussianBlurTexH;
+    }
+    pass
+    {
+        VertexShader = PostProcessVS; PixelShader = GaussianBlurPass2; RenderTarget = pGaussianBlurTex;
+    }
+    #endif
+    
+    pass
 	{
 		VertexShader = PostProcessVS; PixelShader = EffectsPass;
 	}

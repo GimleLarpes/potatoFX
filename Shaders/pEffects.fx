@@ -16,7 +16,7 @@ uniform float BlurStrength < __UNIFORM_SLIDER_FLOAT1
 > = 0.0;
 uniform int BlurQuality < __UNIFORM_RADIO_INT1
 	ui_label = "Blur quality";
-	ui_tooltip = "Quality of gaussian blur";
+	ui_tooltip = "Quality and size of gaussian blur";
 	ui_items = "High quality\0Medium quality\0Fast\0";
 	ui_category = "Blur";
 > = 1;
@@ -99,12 +99,12 @@ texture pGaussianBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = B
 sampler spGaussianBlurTex { Texture = pGaussianBlurTex;};
 
 //DO BLOOM LIKE THIS: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
-texture pBloomHighPassTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
+texture pBloomHighPassTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spBloomHighPassTex { Texture = pBloomHighPassTex;};
-texture pBloom1Tex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
+texture pBloom1Tex < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
 sampler spBloom1Tex { Texture = pBloom1Tex;};
 //This is kinda stupid look for a better way to blur/do bloom
-texture pBloom2Tex < pooled = true; > { Width = BUFFER_WIDTH/6; Height = BUFFER_HEIGHT/6; Format = RGBA16F; };
+texture pBloom2Tex < pooled = true; > { Width = BUFFER_WIDTH/8; Height = BUFFER_HEIGHT/8; Format = RGBA16F; };
 sampler spBloom2Tex { Texture = pBloom2Tex;};
 texture pBloomTex < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
 sampler spBloomTex { Texture = pBloomTex;};
@@ -118,13 +118,13 @@ float3 GaussianBlur(sampler s, float4 vpos, float2 texcoord, float size, float2 
 
     float3 color = tex2D(s, texcoord).rgb;
 
-    //Weights and offsets
+    //Weights and offsets, joinked from GaussianBlur.fx by Ioxa
     if (BlurQuality == 2) //Low quality
     {   
         static const float OFFSET[4] = { 0.0, 2.3648510476, 6.0586244616, 10.0081402754 };
 	    static const float WEIGHT[4] = { 0.39894, 0.2959599993, 0.0045656525, 0.00000149278686458842 };
         
-        color *= WEIGHT[0];
+        color *= WEIGHT[0]; //For some reason these loops have to be in here and not the main function body
         [loop]
         for (int i = 1; i < 4; ++i)
         {
@@ -166,7 +166,7 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
     float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 step_length = TEXEL_SIZE * size;
 
-    //Sample points
+    //Sample points (31 points, 3 rings)
     //Fast (low quality)
     //Inner ring
     float3 color = tex2D(s, texcoord).rgb;
@@ -232,7 +232,7 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
 }
 
 
-//Passes, replace bokehblurpasses with gaussianblur passes
+//Passes
 float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //REMEMBER TO CONVERT TO LINEAR BEFORE PROCESSING! (might have to do a ToLinear pass that is then sampled from?)
 {
     float3 color = GaussianBlur(ReShade::BackBuffer, vpos, texcoord, BlurStrength, float2(1.0, 0.0));
@@ -240,13 +240,13 @@ float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) 
 }
 float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = GaussianBlur(spBokehBlurTexH, vpos, texcoord, BlurStrength, float2(0.0, 1.0));
+    float3 color = GaussianBlur(spGaussianBlurTexH, vpos, texcoord, BlurStrength, float2(0.0, 1.0));
     return color;
 }
 
-float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //Bloom can be optimized a lot, use first gaussian pass as base?
+float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //Bloom can be optimized a lot
 {
-    float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
+    float3 color = tex2D(spGaussianBlurTex, texcoord).rgb;
 
     color *= Oklab::Normalize(Oklab::Luma_RGB(color)) * (1 - BloomThreshold) * 10.0;
     return color;
@@ -270,7 +270,7 @@ float3 BloomPass3(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 
 float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
-	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
+	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb; //Only use it here if any passes that output to svtarget haven't already done it
 	color = (UseApproximateTransforms)  //This needs to be moved to the first pass, preferably not a new pass though as that alone adds 0.800ms
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
@@ -348,7 +348,7 @@ technique Effects <ui_tooltip =
 "A high performance all-in-one shader with the most common effects.\n\n"
 "(HDR compatible)";>
 {
-    #if BlurStrength >= 0
+    #if BlurStrength + BloomStrength >= 0
 	pass
     {//This is also used in DOF and bloom
         VertexShader = PostProcessVS; PixelShader = GaussianBlurPass1; RenderTarget = pGaussianBlurTexH;

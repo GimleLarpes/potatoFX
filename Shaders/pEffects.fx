@@ -166,49 +166,55 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
     float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 step_length = TEXEL_SIZE * size;
 
-    //Sample points (31 points, 3 rings)
+    //Sample points (37 points, 3 rings)
     //Fast (low quality)
     //Inner ring
     float3 color = tex2D(s, texcoord).rgb;
-    color += tex2D(s, texcoord + step_length * float2(0.0, 10.6667)).rgb;
-    color += tex2D(s, texcoord + step_length * float2(10.1446, 3.2962)).rgb;
-    color += tex2D(s, texcoord + step_length * float2(6.2697, -8.6295)).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-6.2697, -8.6295)).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-10.1446, 3.2962)).rgb;
+    color += tex2D(s, texcoord + step_length * float2(0, 10.6667)).rgb;
+    color += tex2D(s, texcoord + step_length * float2(9.2376, 5.3333)).rgb;
+    color += tex2D(s, texcoord + step_length * float2(9.2376, -5.3333)).rgb;
+    color += tex2D(s, texcoord + step_length * float2(0.0, -10.6667)).rgb;
+    color += tex2D(s, texcoord + step_length * float2(-9.2376, -5.3333)).rgb;
+    color += tex2D(s, texcoord + step_length * float2(-9.2376, 5.3333)).rgb;
 
     //Preparing for own (hardcoded)distribution
     if (BlurQuality == 0) //High quality (3 rings)
     {
         //Third outermost ring
-        color += tex2D(s, texcoord + step_length * float2(0.0, 32)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(13.0156, 29.2335)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(23.7806, 21.4122)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(30.4338, 9.8885)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(31.8247, -3.3449)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(0, 32)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(10.9446, 30.0702)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(20.5692, 24.5134)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(27.7128, 16)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(31.5138, 5.5567)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(31.5138, -5.5567)).rgb;
         color += tex2D(s, texcoord + step_length * float2(27.7128, -16)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(18.8091, -25.8885)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(6.6532, -31.3007)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-6.6532, -31.3007)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-18.8091, -25.8885)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(20.5692, -24.5134)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(10.9446, -30.0702)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(0.0, -32)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-10.9446, -30.0702)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-20.5692, -24.5134)).rgb;
         color += tex2D(s, texcoord + step_length * float2(-27.7128, -16)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-31.8247, -3.3449)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-30.4338, 9.8885)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-23.7806, 21.4122)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-13.0156, 29.2335)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-31.5138, -5.5567)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-31.5138, 5.5567)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-27.7128, 16)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-20.5692, 24.5134)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-10.9446, 30.0702)).rgb;
     }
     if (BlurQuality < 2) //Medium quality (2 rings)
     {
         //Second ring
-        color += tex2D(s, texcoord + step_length * float2(0.0, 21.3333)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(12.5394, 17.259)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(20.2892, 6.5924)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(20.2892, -6.5924)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(12.5394, -17.259)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(0, 21.3333)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(10.6667, 18.4752)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(18.4752, 10.6667)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(21.3333, 0.0)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(18.4752, -10.6667)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(10.6667, -18.4752)).rgb;
         color += tex2D(s, texcoord + step_length * float2(0.0, -21.3333)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-12.5394, -17.259)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-20.2892, -6.5924)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-20.2892, 6.5924)).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-12.5394, 17.259)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-10.6667, -18.4752)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-18.4752, -10.6667)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-21.3333, 0.0)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-18.4752, 10.6667)).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-10.6667, 18.4752)).rgb;
     }
 
     float brightness_compensation;
@@ -216,19 +222,19 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
     {
         case 0:
         {
-            brightness_compensation = 1.0;
+            brightness_compensation = rcp(37);
         } break;
         case 1:
         {
-            brightness_compensation = 1.9375;
+            brightness_compensation = 0.0526315789473;
         } break;
         case 2:
         {
-            brightness_compensation = 5.1667;
+            brightness_compensation = 0.142857142857;
         } break;
     }
 
-    return color * brightness_compensation / 31.0;
+    return color * brightness_compensation;
 }
 
 

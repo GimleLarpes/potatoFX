@@ -114,14 +114,14 @@ sampler spBloomTex { Texture = pBloomTex;};
 float3 GaussianBlur(sampler s, float4 vpos, float2 texcoord, float size, float2 direction)
 {
     float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    float2 step_length = TEXEL_SIZE * size * 2.0; //Blur is acceptable with 2x extended step length
+    float2 step_length = TEXEL_SIZE * size;
 
     float3 color = tex2D(s, texcoord).rgb;
 
     //Weights and offsets
     if (BlurQuality == 2) //Low quality
     {   
-        static const float OFFSET[4] = { 0.0, 1.1824255238, 3.0293122308, 5.0040701377 };
+        static const float OFFSET[4] = { 0.0, 2.3648510476, 6.0586244616, 10.0081402754 };
 	    static const float WEIGHT[4] = { 0.39894, 0.2959599993, 0.0045656525, 0.00000149278686458842 };
         
         color *= WEIGHT[0];
@@ -134,7 +134,7 @@ float3 GaussianBlur(sampler s, float4 vpos, float2 texcoord, float size, float2 
     }
     if (BlurQuality == 1) //Medium quality
     {   
-        static const float OFFSET[6] = { 0.0, 1.4584295168, 3.40398480678, 5.3518057801, 7.302940716, 9.2581597095 };
+        static const float OFFSET[6] = { 0.0, 2.9168590336, 6.80796961356, 10.7036115602, 14.605881432, 18.516319419 };
 	    static const float WEIGHT[6] = { 0.13298, 0.23227575, 0.1353261595, 0.0511557427, 0.01253922, 0.0019913644 };
         
         color *= WEIGHT[0];
@@ -147,7 +147,7 @@ float3 GaussianBlur(sampler s, float4 vpos, float2 texcoord, float size, float2 
     }
     if (BlurQuality == 0) //High quality
     {   
-        static const float OFFSET[11] = { 0.0, 1.4895848401, 3.4757135714, 5.4618796741, 7.4481042327, 9.4344079746, 11.420811147, 13.4073334, 15.3939936778, 17.3808101174, 19.3677999584 };
+        static const float OFFSET[11] = { 0.0, 2.9791696802, 6.9514271428, 10.9237593482, 14.8962084654, 18.8688159492, 22.841622294, 26.8146668, 30.7879873556, 34.7616202348, 38.7355999168 };
 	    static const float WEIGHT[11] = { 0.06649, 0.1284697563, 0.111918249, 0.0873132676, 0.0610011113, 0.0381655709, 0.0213835661, 0.0107290241, 0.0048206869, 0.0019396469, 0.0006988718 };
         
         color *= WEIGHT[0];

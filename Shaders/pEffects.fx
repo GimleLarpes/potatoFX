@@ -277,12 +277,12 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
 //Passes
 float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //REMEMBER TO CONVERT TO LINEAR BEFORE PROCESSING! (might have to do a ToLinear pass that is then sampled from?)
 {
-    float3 color = BokehBlur(ReShade::BackBuffer, vpos, texcoord, BlurStrength);//, float2(1.0, 0.0));
+    float3 color = GaussianBlur(ReShade::BackBuffer, vpos, texcoord, BlurStrength, float2(1.0, 0.0));
     return color;
 }
 float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = tex2D(spGaussianBlurTexH, texcoord).rgb;//BokehBlur(spGaussianBlurTexH, vpos, texcoord, BlurStrength);//, float2(0.0, 1.0));
+    float3 color = GaussianBlur(spGaussianBlurTexH, vpos, texcoord, BlurStrength, float2(0.0, 1.0));
     return color;
 }
 

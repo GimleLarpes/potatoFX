@@ -177,7 +177,6 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
     color += tex2D(s, texcoord + step_length * float2(-9.2376, -5.3333)).rgb;
     color += tex2D(s, texcoord + step_length * float2(-9.2376, 5.3333)).rgb;
 
-    //Preparing for own (hardcoded)distribution
     if (BlurQuality == 0) //High quality (3 rings)
     {
         //Third outermost ring

@@ -19,14 +19,14 @@ uniform int GaussianQuality < __UNIFORM_RADIO_INT1
 	ui_tooltip = "Quality and size of gaussian blur";
 	ui_items = "High quality\0Medium quality\0Fast\0";
 	ui_category = "Blur";
-> = 2;
+> = 1;
 //DOF
 //Other settings
 uniform int BokehQuality < __UNIFORM_RADIO_INT1
 	ui_label = "Blur quality";
 	ui_tooltip = "Quality and size of gaussian blur";
 	ui_items = "High quality\0Medium quality\0Fast\0";
-	ui_category = "Blur";
+	ui_category = "DOF";
 > = 1;
 
 
@@ -48,6 +48,12 @@ uniform float BloomThreshold < __UNIFORM_SLIDER_FLOAT1
     ui_tooltip = "Threshold for blooming";
 	ui_category = "Bloom";
 > = 0.85;
+uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 1.0; ui_max = 5.0;
+    ui_label = "Bloom curve";
+    ui_tooltip = "Gamma applied to bloom";
+	ui_category = "Bloom";
+> = 1.25;
 
 //Vignette
 uniform float VignetteStrength < __UNIFORM_SLIDER_FLOAT1
@@ -108,20 +114,28 @@ sampler spGaussianBlurTexH { Texture = pGaussianBlurTexH;};
 texture pGaussianBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spGaussianBlurTex { Texture = pGaussianBlurTex;};
 
-//DO BLOOM LIKE THIS: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
+//DO BLOOM LIKE THIS: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/ (or not actually, passes are more expensive than blur techniques)
 texture pBloomHighPassTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spBloomHighPassTex { Texture = pBloomHighPassTex;};
-texture pBloom1Tex < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
-sampler spBloom1Tex { Texture = pBloom1Tex;};
-//This is kinda stupid look for a better way to blur/do bloom
-texture pBloom2Tex < pooled = true; > { Width = BUFFER_WIDTH/8; Height = BUFFER_HEIGHT/8; Format = RGBA16F; };
-sampler spBloom2Tex { Texture = pBloom2Tex;};
-texture pBloomTex < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
-sampler spBloomTex { Texture = pBloomTex;};
+texture pBloomTex1 < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
+sampler spBloomTex1 { Texture = pBloomTex1;};
+texture pBloomTex2 < pooled = true; > { Width = BUFFER_WIDTH/8; Height = BUFFER_HEIGHT/8; Format = RGBA16F; };
+sampler spBloomTex2 { Texture = pBloomTex2;};
+texture pBloomTex3 < pooled = true; > { Width = BUFFER_WIDTH/16; Height = BUFFER_HEIGHT/16; Format = RGBA16F; };
+sampler spBloomTex3 { Texture = pBloomTex3;};
+texture pBloomTex4 < pooled = true; > { Width = BUFFER_WIDTH/32; Height = BUFFER_HEIGHT/32; Format = RGBA16F; };
+sampler spBloomTex4 { Texture = pBloomTex4;};
+texture pBloomTex5 < pooled = true; > { Width = BUFFER_WIDTH/64; Height = BUFFER_HEIGHT/64; Format = RGBA16F; };
+sampler spBloomTex5 { Texture = pBloomTex5;};
+texture pBloomTex6 < pooled = true; > { Width = BUFFER_WIDTH/128; Height = BUFFER_HEIGHT/128; Format = RGBA16F; };
+sampler spBloomTex6 { Texture = pBloomTex6;};
+
+texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
+sampler spBloomTex0 { Texture = pBloomTex0;};
 
 
 //Functions
-float3 GaussianBlur(sampler s, float4 vpos, float2 texcoord, float size, float2 direction)
+float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction)
 {
     float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 step_length = TEXEL_SIZE * size;
@@ -175,9 +189,10 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
 {
     float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 step_length = TEXEL_SIZE * size;
+
     static const float MAX_VARIANCE = 0.1;
     float2 variance = FrameCount * float2(sin(2000*PI*texcoord.x), cos(2000*PI*texcoord.y)) * 1000.0;
-    variance %= MAX_VARIANCE; //Max variance
+    variance %= MAX_VARIANCE;
     variance = 1 + variance - MAX_VARIANCE / 2.0;
     
 
@@ -273,19 +288,32 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
     return color * brightness_compensation;
 }
 
+float3 DownSample(sampler s, float2 texcoord)
+{
+    //Code, box sampling?
+    return float3(1.0, 1.0, 1.0);
+}
+float3 UpSample(sampler s, float2 texcoord)
+{
+    //Code, box sampling?
+    return float3(1.0, 1.0, 1.0);
+}
 
-//Passes
+
+////Passes
+//Blur
 float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //REMEMBER TO CONVERT TO LINEAR BEFORE PROCESSING! (might have to do a ToLinear pass that is then sampled from?)
 {
-    float3 color = GaussianBlur(ReShade::BackBuffer, vpos, texcoord, BlurStrength, float2(1.0, 0.0));
+    float3 color = GaussianBlur(ReShade::BackBuffer, texcoord, BlurStrength, float2(1.0, 0.0));
     return color;
 }
 float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = GaussianBlur(spGaussianBlurTexH, vpos, texcoord, BlurStrength, float2(0.0, 1.0));
+    float3 color = GaussianBlur(spGaussianBlurTexH, texcoord, BlurStrength, float2(0.0, 1.0));
     return color;
 }
 
+//Bloom, based on: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
 float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //Bloom can be optimized a lot
 {
     float3 color = tex2D(spGaussianBlurTex, texcoord).rgb;
@@ -293,21 +321,70 @@ float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : C
     color *= Oklab::Normalize(Oklab::Luma_RGB(color)) * (1 - BloomThreshold) * 10.0;
     return color;
 }
-float3 BloomPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //I need a lot more blur, blur by downsampling?
+//Downsample
+float3 BloomDownS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //Just do blur by downsampling (if it doesn't work, maybe spam gaussians?)
 {
-    float3 color = BokehBlur(spBloomHighPassTex, vpos, texcoord, 1.0 * BloomStrength);
-    return color * 4 * BloomStrength;
+    float3 color = DownSample(spBloomHighPassTex, texcoord);
+    return color;
 }
-float3 BloomPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BokehBlur(spBloom1Tex, vpos, texcoord, 1.5 * BloomStrength);
-    return color * 2 * BloomStrength;
+    float3 color = DownSample(spBloomTex1, texcoord);
+    return color;
 }
-float3 BloomPass3(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS3(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BokehBlur(spBloom2Tex, vpos, texcoord, 2.0 * BloomStrength);
-    return color * BloomStrength;
+    float3 color = DownSample(spBloomTex2, texcoord);
+    return color;
 }
+float3 BloomDownS4(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = DownSample(spBloomTex3, texcoord);
+    return color;
+}
+float3 BloomDownS5(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = DownSample(spBloomTex4, texcoord);
+    return color;
+}
+float3 BloomDownS6(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = DownSample(spBloomTex5, texcoord);
+    return color;
+}
+//Some adaption stuff?
+//Upsample
+float3 BloomUpS5(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = UpSample(spBloomTex6, texcoord);
+    return color;
+}
+float3 BloomUpS4(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = UpSample(spBloomTex5, texcoord);
+    return color;
+}
+float3 BloomUpS3(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = UpSample(spBloomTex4, texcoord);
+    return color;
+}
+float3 BloomUpS2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = UpSample(spBloomTex3, texcoord);
+    return color;
+}
+float3 BloomUpS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = UpSample(spBloomTex2, texcoord);
+    return color;
+}
+float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = UpSample(spBloomTex1, texcoord);
+    return color;
+}
+
 
 
 float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
@@ -328,11 +405,11 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 
 
 
-    //Bloom, this is extremely unoptimized (uses 3 passes)
+    //Bloom
     if (BloomStrength != 0.0)
     {
         //Somehow select bright pixels and blur them look at other shaders for insight. Do calculations on Downsampled texture
-        color += BloomStrength * tex2D(spBloomTex, texcoord).rgb;
+        color += BloomStrength * tex2D(spBloomTex0, texcoord).rgb;
     }
 
     //Vignette
@@ -374,7 +451,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
         }
         else
         {   //Film grain
-            color.rgb = Oklab::Saturate_RGB(color.rgb * (1-weight) + (gauss_noise1 - 0.5) * weight);
+            color.rgb = Oklab::Saturate_RGB(color.rgb * (1-weight) + (gauss_noise1 - 0.225) * weight);
         }
     }
 
@@ -405,18 +482,24 @@ technique Effects <ui_tooltip =
     {
         VertexShader = PostProcessVS; PixelShader = HighPassFilter; RenderTarget = pBloomHighPassTex;
     }
-    pass
-    {
-        VertexShader = PostProcessVS; PixelShader = BloomPass1; RenderTarget = pBloom1Tex;
-    }
-    pass
-    {
-        VertexShader = PostProcessVS; PixelShader = BloomPass2; RenderTarget = pBloom2Tex;
-    }
-    pass
-    {
-        VertexShader = PostProcessVS; PixelShader = BloomPass3; RenderTarget = pBloomTex;
-    }
+    
+    //Bloom downsample and upsample passes
+    #define BLOOM_DOWN_PASS(i) pass { VertexShader = PostProcessVS; PixelShader = BloomDownS##i; RenderTarget = pBloomTex##i; }
+    #define BLOOM_UP_PASS(i) pass { VertexShader = PostProcessVS; PixelShader = BloomUpS##i; RenderTarget = pBloomTex##i; }
+    
+    BLOOM_DOWN_PASS(1)
+    BLOOM_DOWN_PASS(2)
+    BLOOM_DOWN_PASS(3)
+    BLOOM_DOWN_PASS(4)
+    BLOOM_DOWN_PASS(5)
+    BLOOM_DOWN_PASS(6)
+
+    BLOOM_UP_PASS(5)
+    BLOOM_UP_PASS(4)
+    BLOOM_UP_PASS(3)
+    BLOOM_UP_PASS(2)
+    BLOOM_UP_PASS(1)
+    BLOOM_UP_PASS(0)
     #endif
     
     pass

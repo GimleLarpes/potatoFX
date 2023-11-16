@@ -43,7 +43,7 @@ uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Bloom";
 > = 0.0;
 uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 1.0; ui_max = 5.0;
+	ui_min = 1.0; ui_max = 10.0;
     ui_label = "Bloom curve";
     ui_tooltip = "Controls shape of bloom\n1 = linear      5 = brightest parts only";
 	ui_category = "Bloom";
@@ -338,7 +338,7 @@ float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) 
 //Bloom, based on: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
 float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
+    float3 color = tex2D(spGaussianBlurTex, texcoord).rgb;
 
     static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
 	float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0);

@@ -341,7 +341,7 @@ float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : C
     float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
 
     static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
-	float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0); //remember to modify paper white calculations to also fit sdr well
+	float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0);
 
     color *= pow(abs(adapted_luma), BloomCurve);
     return color;
@@ -444,7 +444,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     //Blur
     if (BlurStrength != 0.0)
     {
-        color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, min(4.0*BlurStrength, 1.0));
+        color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, min(4.0*BlurStrength, 1.0)); //BLUR HAS A BUG THAT MAKES BLURRED IMAGE TOO BRIGHT
     }
 
 

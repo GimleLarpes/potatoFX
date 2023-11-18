@@ -45,7 +45,7 @@ uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 1.0; ui_max = 10.0;
     ui_label = "Bloom curve";
-    ui_tooltip = "Controls shape of bloom\n1 = linear      5 = brightest parts only";
+    ui_tooltip = "Controls shape of bloom\n1 = linear      10 = brightest parts only";
 	ui_category = "Bloom";
 > = 1.0;
 
@@ -193,103 +193,103 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
     //Sample points (91 points, 5 rings)
     //Fast (low quality, 19 points, 2 rings)
     float3 color = tex2D(s, texcoord).rgb;
-    color += tex2D(s, texcoord + step_length * float2(0.0, 6.4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(5.5426, 3.2) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(5.5426, -3.2) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(0.0, -6.4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-5.5426, -3.2) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-5.5426, 3.2) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(0.0, 12.8) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(6.4, 11.0851) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(11.0851, 6.4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(12.8, 0.0) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(11.0851, -6.4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(6.4, -11.0851) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(0.0, -12.8) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-6.4, -11.0851) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-11.0851, -6.4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-12.8, 0.0) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-11.0851, 6.4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-6.4, 11.0851) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(0, 4) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(3.4641, 2) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(3.4641, -2) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(0, -4) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(-3.4641, -2) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(-3.4641, 2) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(0, 8) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(4, 6.9282) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(6.9282, 4) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(8, 0) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(6.9282, -4) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(4, -6.9282) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(0, -8) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(-4, -6.9282) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(-6.9282, -4) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(-8, 0) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(-6.9282, 4) * variance).rgb;
+    color += tex2D(s, texcoord + step_length * float2(-4, 6.9282) * variance).rgb;
 
     if (BokehQuality == 0) //High quality (5 rings)
     {
-        color += tex2D(s, texcoord + step_length * float2(0.0, 25.6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(6.6258, 24.7277) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(12.8, 22.1703) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(18.1019, 18.1019) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(22.1703, 12.8) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(24.7277, 6.6258) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(25.6, 0.0) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(24.7277, -6.6258) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(22.1703, -12.8) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(18.1019, -18.1019) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(12.8, -22.1703) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(6.6258, -24.7277) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(0.0, -25.6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-6.6258, -24.7277) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-12.8, -22.1703) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-18.1019, -18.1019) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-22.1703, -12.8) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-24.7277, -6.6258) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-25.6, 0.0) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-24.7277, 6.6258) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-22.1703, 12.8) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-18.1019, 18.1019) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-12.8, 22.1703) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-6.6258, 24.7277) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(0.0, 32) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(6.6532, 31.3007) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(13.0156, 29.2335) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(18.8091, 25.8885) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(23.7806, 21.4122) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(27.7128, 16) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(30.4338, 9.8885) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(31.8247, 3.3449) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(31.8247, -3.3449) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(30.4338, -9.8885) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(27.7128, -16) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(23.7806, -21.4122) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(18.8091, -25.8885) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(13.0156, -29.2335) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(6.6532, -31.3007) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(0.0, -32) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-6.6532, -31.3007) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-13.0156, -29.2335) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-18.8091, -25.8885) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-23.7806, -21.4122) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-27.7128, -16) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-30.4338, -9.8885) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-31.8247, -3.3449) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-31.8247, 3.3449) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-30.4338, 9.8885) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-27.7128, 16) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-23.7806, 21.4122) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-18.8091, 25.8885) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-13.0156, 29.2335) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-6.6532, 31.3007) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(0, 16) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(4.1411, 15.4548) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(8, 13.8564) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(11.3137, 11.3137) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(13.8564, 8) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(15.4548, 4.1411) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(16, 0) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(15.4548, -4.1411) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(13.8564, -8) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(11.3137, -11.3137) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(8, -13.8564) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(4.1411, -15.4548) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(0, -16) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-4.1411, -15.4548) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-8, -13.8564) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-11.3137, -11.3137) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-13.8564, -8) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-15.4548, -4.1411) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-16, 0) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-15.4548, 4.1411) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-13.8564, 8) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-11.3137, 11.3137) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-8, 13.8564) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-4.1411, 15.4548) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(0, 20) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(4.1582, 19.563) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(8.1347, 18.2709) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(11.7557, 16.1803) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(14.8629, 13.3826) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(17.3205, 10) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(19.0211, 6.1803) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(19.8904, 2.0906) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(19.8904, -2.0906) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(19.0211, -6.1803) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(17.3205, -10) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(14.8629, -13.3826) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(11.7557, -16.1803) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(8.1347, -18.2709) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(4.1582, -19.563) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(0, -20) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-4.1582, -19.563) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-8.1347, -18.2709) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-11.7557, -16.1803) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-14.8629, -13.3826) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-17.3205, -10) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-19.0211, -6.1803) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-19.8904, -2.0906) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-19.8904, 2.0906) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-19.0211, 6.1803) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-17.3205, 10) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-14.8629, 13.3826) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-11.7557, 16.1803) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-8.1347, 18.2709) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-4.1582, 19.563) * variance).rgb;
     }
     if (BokehQuality < 2) //Medium quality (37 points, 3 rings)
     {
-        //Second ring
-        color += tex2D(s, texcoord + step_length * float2(0.0, 19.2) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(6.5668, 18.0421) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(12.3415, 14.7081) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(16.6277, 9.6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(18.9083, 3.334) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(18.9083, -3.334) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(16.6277, -9.6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(12.3415, -14.7081) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(6.5668, -18.0421) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(0.0, -19.2) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-6.5668, -18.0421) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-12.3415, -14.7081) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-16.6277, -9.6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-18.9083, -3.334) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-18.9083, 3.334) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-16.6277, 9.6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-12.3415, 14.7081) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-6.5668, 18.0421) * variance).rgb;
+        //Third ring
+        color += tex2D(s, texcoord + step_length * float2(0, 12) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(4.1042, 11.2763) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(7.7135, 9.1925) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(10.3923, 6) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(11.8177, 2.0838) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(11.8177, -2.0838) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(10.3923, -6) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(7.7135, -9.1925) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(4.1042, -11.2763) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(0, -12) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-4.1042, -11.2763) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-7.7135, -9.1925) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-10.3923, -6) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-11.8177, -2.0838) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-11.8177, 2.0838) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-10.3923, 6) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-7.7135, 9.1925) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-4.1042, 11.2763) * variance).rgb;
     }
 
     float brightness_compensation;
@@ -297,15 +297,15 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
     {
         case 0:
         {
-            brightness_compensation = rcp(37);
+            brightness_compensation = rcp(91);
         } break;
         case 1:
         {
-            brightness_compensation = 0.0768581081081;
+            brightness_compensation = 0.027027027027;
         } break;
         case 2:
         {
-            brightness_compensation = 0.149671052632;
+            brightness_compensation = 0.0526315789474;
         } break;
     }
 

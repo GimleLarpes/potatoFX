@@ -236,6 +236,19 @@ namespace Oklab
         return v / INVNORM_FACTOR;
     }
 
+
+    //Tonemappers
+    float3 Lottes(float3 c)
+    {   
+        c /= (1.0 + Luma_RGB(c));
+        return Saturate_RGB(c);
+    }
+    float3 LottesInv(float3 c)
+    {   
+        c /= (1.0 - Luma_RGB(c));
+        return min(c, 10.0); //No idea what is good value
+    }
+
     //Transformations
     float3 RGB_to_XYZ(float3 c)
     {

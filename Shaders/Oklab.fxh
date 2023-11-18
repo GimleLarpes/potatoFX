@@ -29,7 +29,7 @@ namespace Oklab
     #else
         static const bool IS_HDR = false;
         #undef HDR_PAPER_WHITE_NITS
-        #define HDR_PAPER_WHITE_NITS 40.0
+        #define HDR_PAPER_WHITE_NITS 50.0
     #endif
     static const float HDR_PAPER_WHITE = HDR_PAPER_WHITE_NITS / SDR_WHITEPOINT;
 

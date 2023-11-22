@@ -36,6 +36,13 @@ uniform int BokehQuality < __UNIFORM_RADIO_INT1
 
 
 //Bloom
+#if BUFFER_COLOR_SPACE > 1
+    static const float BLOOM_CURVE_DEFAULT = 1.0;
+    static const float BLOOM_GAMMA_DEFAULT = 1.0;
+#else
+    static const float BLOOM_CURVE_DEFAULT = 2.0;
+    static const float BLOOM_GAMMA_DEFAULT = 0.6;
+#endif
 uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_label = "Bloom amount";
@@ -43,11 +50,17 @@ uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Bloom";
 > = 0.0;
 uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 1.0; ui_max = 10.0;
+	ui_min = 1.0; ui_max = 5.0;
     ui_label = "Bloom curve";
-    ui_tooltip = "Controls shape of bloom\n1 = linear      10 = brightest parts only";
+    ui_tooltip = "What parts of the image to apply bloom to\n1 = linear      5 = brightest parts only";
 	ui_category = "Bloom";
-> = 1.0;
+> = BLOOM_CURVE_DEFAULT;
+uniform float BloomGamma < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.1; ui_max = 2;
+    ui_label = "Bloom gamma";
+    ui_tooltip = "Controls shape of bloom";
+	ui_category = "Bloom";
+> = BLOOM_GAMMA_DEFAULT;
 
 //Vignette
 uniform float VignetteStrength < __UNIFORM_SLIDER_FLOAT1
@@ -343,7 +356,7 @@ float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : C
     static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
 	float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0);
 
-    color *= pow(abs(adapted_luma), BloomCurve);
+    color *= pow(abs(adapted_luma), BloomCurve * BloomCurve);
     return color;
 }
 //Downsample
@@ -426,6 +439,7 @@ float3 BloomUpS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
     float3 color = BoxSample(spBloomTex1, texcoord, 0.5);
+    color *= pow(abs(Oklab::Luma_RGB(color)), BloomGamma);
     return color;
 }
 
@@ -444,7 +458,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     //Blur
     if (BlurStrength != 0.0)
     {
-        color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, min(4.0*BlurStrength, 1.0)); //BLUR HAS A BUG THAT MAKES BLURRED IMAGE TOO BRIGHT
+        color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, min(4.0 * BlurStrength, 1.0)); //BLUR HAS A BUG THAT MAKES BLURRED IMAGE TOO BRIGHT
     }
 
 
@@ -452,8 +466,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     //Bloom
     if (BloomStrength != 0.0)
     {
-        color += BloomStrength * tex2D(spBloomTex0, texcoord).rgb;
-        //color = tex2D(spBloomTex0, texcoord).rgb;//DEBUG
+        color += (BloomStrength * BloomStrength) * tex2D(spBloomTex0, texcoord).rgb;
     }
 
     //Vignette
@@ -485,7 +498,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 	    float theta = 2.0 * PI * uniform_noise2;
 	
 	    float gauss_noise1 = r * cos(theta);
-	    float weight = NoiseStrength * NOISE_CURVE / (luma * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luma to simulate a wider dynamic range
+	    float weight = (NoiseStrength * NoiseStrength) * NOISE_CURVE / (luma * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luma to simulate a wider dynamic range
 
 	    if (NoiseType == 1)
         {   //Color noise

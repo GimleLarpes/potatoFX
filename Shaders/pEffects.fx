@@ -41,7 +41,7 @@ uniform int BokehQuality < __UNIFORM_RADIO_INT1
     static const float BLOOM_GAMMA_DEFAULT = 1.0;
 #else
     static const float BLOOM_CURVE_DEFAULT = 2.0;
-    static const float BLOOM_GAMMA_DEFAULT = 0.6;
+    static const float BLOOM_GAMMA_DEFAULT = 0.8;
 #endif
 uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;

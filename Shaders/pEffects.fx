@@ -40,7 +40,7 @@ uniform int BokehQuality < __UNIFORM_RADIO_INT1
     static const float BLOOM_CURVE_DEFAULT = 1.0;
     static const float BLOOM_GAMMA_DEFAULT = 1.0;
 #else
-    static const float BLOOM_CURVE_DEFAULT = 1.2;
+    static const float BLOOM_CURVE_DEFAULT = 1.0;
     static const float BLOOM_GAMMA_DEFAULT = 0.8;
 #endif
 uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
@@ -368,6 +368,11 @@ float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : C
     static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
 	float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0);
 
+    if (!Oklab::IS_HDR)
+    {
+        color = Oklab::LottesInv(color);
+    }
+
     color *= pow(abs(adapted_luma), BloomCurve * BloomCurve);
     return color;
 }
@@ -451,6 +456,12 @@ float3 BloomUpS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
     float3 color = BoxSample(spBloomTex1, texcoord, 0.5);
+
+    if (!Oklab::IS_HDR)
+    {
+        color = Oklab::Lottes(color);
+    }
+
     if (BloomGamma != 1.0)
     {
         color *= pow(abs(Oklab::Luma_RGB(color)), BloomGamma); //Gamma causes bugs in hdr since luma isn't normalized

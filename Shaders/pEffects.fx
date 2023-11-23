@@ -439,7 +439,10 @@ float3 BloomUpS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
     float3 color = BoxSample(spBloomTex1, texcoord, 0.5);
-    color *= pow(abs(Oklab::Luma_RGB(color)), BloomGamma);
+    if (BloomGamma != 1.0)
+    {
+        color *= pow(abs(Oklab::Luma_RGB(color)), BloomGamma); //Gamma causes bugs in hdr since luma isn't normalized
+    }
     return color;
 }
 

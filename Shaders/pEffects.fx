@@ -40,7 +40,7 @@ uniform int BokehQuality < __UNIFORM_RADIO_INT1
     static const float BLOOM_CURVE_DEFAULT = 1.0;
     static const float BLOOM_GAMMA_DEFAULT = 1.0;
 #else
-    static const float BLOOM_CURVE_DEFAULT = 2.0;
+    static const float BLOOM_CURVE_DEFAULT = 1.2;
     static const float BLOOM_GAMMA_DEFAULT = 0.8;
 #endif
 uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
@@ -115,6 +115,9 @@ uniform bool UseApproximateTransforms <
 uniform int FrameCount < source = "framecount"; >;
 #undef PI
 #define PI 3.1415927
+
+texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
+sampler spLinearTex { Texture = pLinearTex;};
 
 texture pGaussianBlurTexH < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spGaussianBlurTexH { Texture = pGaussianBlurTexH;};
@@ -336,10 +339,19 @@ float3 BoxSample(sampler s, float2 texcoord, float d)
 
 
 ////Passes
-//Blur
-float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR //REMEMBER TO CONVERT TO LINEAR BEFORE PROCESSING! (might have to do a ToLinear pass that is then sampled from?)
+float3 LinearizePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = GaussianBlur(ReShade::BackBuffer, texcoord, BlurStrength, float2(1.0, 0.0));
+    float3 color = tex2D(ReShade::BackBuffer, texcoord);
+    color = (UseApproximateTransforms)
+		? Oklab::Fast_DisplayFormat_to_Linear(color)
+		: Oklab::DisplayFormat_to_Linear(color);
+    return color;
+}
+
+//Blur
+float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float3 color = GaussianBlur(spLinearTex, texcoord, BlurStrength, float2(1.0, 0.0));
     return color;
 }
 float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
@@ -450,18 +462,14 @@ float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 
 float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
-	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb; //Only use it here if any passes that output to svtarget haven't already done it
-	color = (UseApproximateTransforms)  //This needs to be moved to the first pass, preferably not a new pass though as that alone adds 0.800ms
-		? Oklab::Fast_DisplayFormat_to_Linear(color)
-		: Oklab::DisplayFormat_to_Linear(color);
-	
+	float3 color = tex2D(spLinearTex, texcoord).rgb;
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	
     ////Effects
     //Blur
     if (BlurStrength != 0.0)
     {
-        color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, min(4.0 * BlurStrength, 1.0)); //BLUR HAS A BUG THAT MAKES BLURRED IMAGE TOO BRIGHT
+        color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, min(4.0 * BlurStrength, 1.0));
     }
 
 
@@ -526,6 +534,11 @@ technique Effects <ui_tooltip =
 "A high performance all-in-one shader with the most common effects.\n\n"
 "(HDR compatible)";>
 {
+    pass
+    {
+        VertexShader = PostProcessVS; PixelShader = LinearizePass; RenderTarget = pLinearTex;
+    }
+
     #if BlurStrength >= 0
 	pass
     {//This is also used in DOF(?) or just use gaussian for both near and far field (1 quality step lower than far field blur?)

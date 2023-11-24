@@ -464,7 +464,7 @@ float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 
     if (BloomGamma != 1.0)
     {
-        color *= pow(abs(Oklab::Luma_RGB(color)), BloomGamma); //Gamma causes bugs in hdr since luma isn't normalized
+        color *= pow(abs(Oklab::Luma_RGB(color) / Oklab::INVNORM_FACTOR), BloomGamma);
     }
     return color;
 }

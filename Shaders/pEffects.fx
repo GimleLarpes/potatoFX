@@ -29,10 +29,10 @@ uniform int BokehQuality < __UNIFORM_RADIO_INT1
 	ui_category = "DOF";
 > = 1;
 
+//Chromatic aberration
 
 
-
-
+//Lens flare
 
 
 //Bloom
@@ -338,6 +338,43 @@ float3 BoxSample(sampler s, float2 texcoord, float d)
 }
 
 
+//Vertex shaders
+struct vs2ps
+{
+    float4 vpos : SV_Position;
+    float4 uv : TEXCOORD0;
+};
+
+vs2ps vs_basic(const uint id)
+{
+    vs2ps o;
+    o.uv.x = (id == 2) ? 2.0 : 0.0;
+    o.uv.y = (id == 1) ? 2.0 : 0.0;
+    o.vpos = float4(o.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    return o;
+}
+
+vs2ps VS_Blur(uint id : SV_VertexID)
+{
+    vs2ps o = vs_basic(id);
+    if (BlurStrength == 0.0)
+    {
+        o.vpos.xy = 0.0;
+    }
+    return o;
+}
+
+vs2ps VS_Bloom(uint id : SV_VertexID)
+{   
+    vs2ps o = vs_basic(id);
+    if (BloomStrength == 0.0)
+    {
+        o.vpos.xy = 0.0;
+    }
+    return o;
+}
+
+
 ////Passes
 float3 LinearizePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
@@ -363,7 +400,7 @@ float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) 
 //Bloom, based on: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
 float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = tex2D(spGaussianBlurTex, texcoord).rgb;
+    float3 color = (BlurStrength == 0.0) ? tex2D(spLinearTex, texcoord).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
 
     static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
 	float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0);
@@ -550,26 +587,25 @@ technique Effects <ui_tooltip =
         VertexShader = PostProcessVS; PixelShader = LinearizePass; RenderTarget = pLinearTex;
     }
 
-    #if BlurStrength >= 0
+
 	pass
     {//This is also used in DOF(?) or just use gaussian for both near and far field (1 quality step lower than far field blur?)
-        VertexShader = PostProcessVS; PixelShader = GaussianBlurPass1; RenderTarget = pGaussianBlurTexH;
+        VertexShader = VS_Blur; PixelShader = GaussianBlurPass1; RenderTarget = pGaussianBlurTexH;
     }
     pass
     {
-        VertexShader = PostProcessVS; PixelShader = GaussianBlurPass2; RenderTarget = pGaussianBlurTex;
+        VertexShader = VS_Blur; PixelShader = GaussianBlurPass2; RenderTarget = pGaussianBlurTex;
     }
-    #endif
 
-    #if BloomStrength >= 0
+
 	pass
     {
-        VertexShader = PostProcessVS; PixelShader = HighPassFilter; RenderTarget = pBloomTex0;
+        VertexShader = VS_Bloom; PixelShader = HighPassFilter; RenderTarget = pBloomTex0;
     }
     
     //Bloom downsample and upsample passes
-    #define BLOOM_DOWN_PASS(i) pass { VertexShader = PostProcessVS; PixelShader = BloomDownS##i; RenderTarget = pBloomTex##i; }
-    #define BLOOM_UP_PASS(i) pass { VertexShader = PostProcessVS; PixelShader = BloomUpS##i; RenderTarget = pBloomTex##i; ClearRenderTargets = FALSE; BlendEnable = TRUE; BlendOp = 1; SrcBlend = 1; DestBlend = 9; }
+    #define BLOOM_DOWN_PASS(i) pass { VertexShader = VS_Bloom; PixelShader = BloomDownS##i; RenderTarget = pBloomTex##i; }
+    #define BLOOM_UP_PASS(i) pass { VertexShader = VS_Bloom; PixelShader = BloomUpS##i; RenderTarget = pBloomTex##i; ClearRenderTargets = FALSE; BlendEnable = TRUE; BlendOp = 1; SrcBlend = 1; DestBlend = 9; }
     
     BLOOM_DOWN_PASS(1)
     BLOOM_DOWN_PASS(2)
@@ -588,7 +624,7 @@ technique Effects <ui_tooltip =
     BLOOM_UP_PASS(2)
     BLOOM_UP_PASS(1)
     BLOOM_UP_PASS(0)
-    #endif
+
     
     pass
 	{

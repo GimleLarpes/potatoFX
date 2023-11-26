@@ -30,7 +30,12 @@ uniform int BokehQuality < __UNIFORM_RADIO_INT1
 > = 1;
 
 //Chromatic aberration
-
+uniform float CAStrength < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "CA amount";
+    ui_tooltip = "Amount of chromatic aberration to apply";
+	ui_category = "Chromatic Aberration";
+> = 0.0;
 
 //Lens flare
 
@@ -515,9 +520,25 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 	
     ////Effects
     //Blur
+    float blur_mix = min((4 - GaussianQuality) * BlurStrength, 1.0);
     if (BlurStrength != 0.0)
     {
-        color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, min(4.0 * BlurStrength, 1.0));
+        color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, blur_mix);
+    }
+
+
+    //Chromatic aberration
+    float2 radiant_vector = texcoord.xy - 0.5;
+    if (CAStrength != 0.0)
+    {
+        float weight = 2.0 * length(radiant_vector);
+        float3 influence = float3(-40.0, 1.0, 30.0);
+
+        float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        float2 step_length = TEXEL_SIZE * CAStrength * radiant_vector;
+        color.r = lerp(tex2D(spLinearTex, texcoord + step_length * influence.r).r, tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).r, blur_mix);
+        color.g = lerp(tex2D(spLinearTex, texcoord + step_length * influence.g).g, tex2D(spGaussianBlurTex, texcoord + step_length * influence.g).g, blur_mix);
+        color.b = lerp(tex2D(spLinearTex, texcoord + step_length * influence.b).b, tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).b, blur_mix);
     }
 
 

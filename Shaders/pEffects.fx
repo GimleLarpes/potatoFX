@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // pEffects.fx by Gimle Larpes
-// A high performance all-in-one shader with the most common effects.
+// A high performance all-in-one shader with many common lens- and camera effects.
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include "ReShade.fxh"
@@ -20,6 +20,7 @@ uniform int GaussianQuality < __UNIFORM_RADIO_INT1
 	ui_items = "High quality\0Medium quality\0Fast\0";
 	ui_category = "Blur";
 > = 1;
+
 //DOF
 //Other settings, aperture and focal length?
 uniform int BokehQuality < __UNIFORM_RADIO_INT1
@@ -526,6 +527,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
         color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, blur_mix);
     }
 
+    //DOF
 
     //Chromatic aberration
     float2 radiant_vector = texcoord.xy - 0.5;
@@ -541,6 +543,8 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
         color.b = lerp(tex2D(spLinearTex, texcoord + step_length * influence.b).b, tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).b, blur_mix);
     }
 
+    //Lens flare
+    //probably use radiant vector in some way
 
 
     //Bloom
@@ -555,7 +559,6 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
         float weight = clamp((length(float2(abs(texcoord.x - 0.5) * rcp(VignetteWidth), abs(texcoord.y - 0.5))) - VignetteInnerRadius) / (VignetteOuterRadius - VignetteInnerRadius), 0.0, 1.0);
         color.rgb *= 1 - VignetteStrength * weight;
     }
-
 
     //Noise
     if (NoiseStrength != 0.0)
@@ -600,7 +603,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 }
 
 technique Effects <ui_tooltip = 
-"A high performance all-in-one shader with the most common effects.\n\n"
+"A high performance all-in-one shader with many common lens- and camera effects.\n\n"
 "(HDR compatible)";>
 {
     pass

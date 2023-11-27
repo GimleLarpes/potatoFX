@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // pEffects.fx by Gimle Larpes
-// A high performance all-in-one shader with many common lens- and camera effects.
+// A high performance all-in-one shader with many common lens and camera effects.
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include "ReShade.fxh"
@@ -30,16 +30,37 @@ uniform int BokehQuality < __UNIFORM_RADIO_INT1
 	ui_category = "DOF";
 > = 1;
 
+//Glass imperfections
+uniform float GeoIStrength < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 4.0;
+    ui_label = "Glass quality";
+    ui_tooltip = "Amount of surface lens imperfections";
+	ui_category = "Lens Imperfections";
+> = 0.0;
+
+//Lens flare
+uniform float FlareStrength < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "Lens flare amount";
+    ui_tooltip = "Amount of lens flaring";
+	ui_category = "Lens Imperfections";
+> = 0.0;
+
 //Chromatic aberration
 uniform float CAStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_label = "CA amount";
-    ui_tooltip = "Amount of chromatic aberration to apply";
-	ui_category = "Chromatic Aberration";
+    ui_tooltip = "Amount of chromatic aberration";
+	ui_category = "Lens Imperfections";
 > = 0.0;
 
-//Lens flare
-
+//Dirt
+uniform float DirtStrength < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "Dirt amount";
+    ui_tooltip = "Amount of dirt on the lens";
+	ui_category = "Lens Imperfections";
+> = 0.0;
 
 //Bloom
 #if BUFFER_COLOR_SPACE > 1
@@ -121,6 +142,16 @@ uniform bool UseApproximateTransforms <
 uniform int FrameCount < source = "framecount"; >;
 #undef PI
 #define PI 3.1415927
+
+#undef BUMP_MAP_RESOLUTION
+#define BUMP_MAP_RESOLUTION 32
+#undef BUMP_MAP_SCALE
+#define BUMP_MAP_SCALE 4
+#undef BUMP_MAP_SOURCE
+#define BUMP_MAP_SOURCE "pBumpTex.png"
+
+texture pBumpTex < source = BUMP_MAP_SOURCE; pooled = true; > { Width = BUMP_MAP_RESOLUTION; Height = BUMP_MAP_RESOLUTION; Format = RGBA8; };
+sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;}; //GA channels are unused!!!
 
 texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler spLinearTex { Texture = pLinearTex;};
@@ -319,7 +350,7 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
     {
         case 0:
         {
-            brightness_compensation = rcp(91);
+            brightness_compensation = 0.010989010989;
         } break;
         case 1:
         {
@@ -516,10 +547,20 @@ float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 
 float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
-	float3 color = tex2D(spLinearTex, texcoord).rgb;
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
+    static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 	
     ////Effects
+    //Glass imperfections
+    if (GeoIStrength != 0.0)
+    {
+        float2 bump = 0.666666666 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE).xy + 0.333333333 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE * 3).xy;
+    
+	    bump = bump * 2.0 - 1.0;
+        texcoord += bump * TEXEL_SIZE * (GeoIStrength * GeoIStrength);
+    }
+    float3 color = tex2D(spLinearTex, texcoord).rgb;
+    
     //Blur
     float blur_mix = min((4 - GaussianQuality) * BlurStrength, 1.0);
     if (BlurStrength != 0.0)
@@ -529,22 +570,22 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 
     //DOF
 
-    //Chromatic aberration
+    //Lens flare
+    //probably use radiant vector in some way
+
+    //Chromatic aberration,  THIS WILL NEED TWEAKS WHEN DOF IS IMPLEMENTED
     float2 radiant_vector = texcoord.xy - 0.5;
     if (CAStrength != 0.0)
     {
-        float weight = 2.0 * length(radiant_vector);
         float3 influence = float3(-40.0, 1.0, 30.0);
 
-        float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
         float2 step_length = TEXEL_SIZE * CAStrength * radiant_vector;
         color.r = lerp(tex2D(spLinearTex, texcoord + step_length * influence.r).r, tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).r, blur_mix);
         color.g = lerp(tex2D(spLinearTex, texcoord + step_length * influence.g).g, tex2D(spGaussianBlurTex, texcoord + step_length * influence.g).g, blur_mix);
         color.b = lerp(tex2D(spLinearTex, texcoord + step_length * influence.b).b, tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).b, blur_mix);
     }
 
-    //Lens flare
-    //probably use radiant vector in some way
+    //Dirt
 
 
     //Bloom
@@ -595,7 +636,6 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
         }
     }
 
-	
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_Linear_to_DisplayFormat(color)
 		: Oklab::Linear_to_DisplayFormat(color);
@@ -603,7 +643,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 }
 
 technique Effects <ui_tooltip = 
-"A high performance all-in-one shader with many common lens- and camera effects.\n\n"
+"A high performance all-in-one shader with many common lens and camera effects.\n\n"
 "(HDR compatible)";>
 {
     pass

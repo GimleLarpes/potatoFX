@@ -468,7 +468,8 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	{
 		color = Apply_LUT(Oklab::Saturate_RGB(color));
 	}
-
+	
+	if (!Oklab::IS_HDR) { color = Oklab::Saturate_RGB(color); }
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_Linear_to_DisplayFormat(color)
 		: Oklab::Linear_to_DisplayFormat(color);

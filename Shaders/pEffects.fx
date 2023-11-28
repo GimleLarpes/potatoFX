@@ -23,6 +23,12 @@ uniform int GaussianQuality < __UNIFORM_RADIO_INT1
 
 //DOF
 //Other settings, aperture and focal length?
+uniform bool UseDOF <
+	ui_type = "bool";
+	ui_label = "Enable DOF";
+    ui_tooltip = "Use depth of field";
+	ui_category = "LUT";
+> = false;
 uniform int BokehQuality < __UNIFORM_RADIO_INT1
 	ui_label = "Blur quality";
 	ui_tooltip = "Quality and size of gaussian blur";
@@ -162,9 +168,9 @@ uniform int FrameCount < source = "framecount"; >;
 #define DIRT_MAP_SOURCE "pDirtTex.png"
 
 texture pBumpTex < source = BUMP_MAP_SOURCE; pooled = true; > { Width = BUMP_MAP_RESOLUTION; Height = BUMP_MAP_RESOLUTION; Format = RGBA8; };
-sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;}; //GA channels are unused!!!
+sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;}; //GA channels are unused (remember to switch to RGBA8)!!!
 
-texture pDirtTex < source = DIRT_MAP_SOURCE; pooled = true; > { Width = DIRT_MAP_RESOLUTION; Height = DIRT_MAP_RESOLUTION; Format = RGBA8; };
+texture pDirtTex < source = DIRT_MAP_SOURCE; pooled = true; > { Width = DIRT_MAP_RESOLUTION; Height = DIRT_MAP_RESOLUTION; Format = RG8; };
 sampler spDirtTex { Texture = pDirtTex; AddressU = REPEAT; AddressV = REPEAT;};
 
 texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
@@ -175,7 +181,9 @@ sampler spGaussianBlurTexH { Texture = pGaussianBlurTexH;};
 texture pGaussianBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spGaussianBlurTex { Texture = pGaussianBlurTex;};
 
-texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
+#undef BLOOM_MIP
+#define BLOOM_MIP 1 //doesn't like using functions
+texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; MipLevels = BLOOM_MIP; };
 sampler spBloomTex0 { Texture = pBloomTex0;};
 texture pBloomTex1 < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
 sampler spBloomTex1 { Texture = pBloomTex1;};
@@ -415,6 +423,16 @@ vs2ps VS_Blur(uint id : SV_VertexID)
     return o;
 }
 
+vs2ps VS_DOF(uint id : SV_VertexID)
+{
+    vs2ps o = vs_basic(id);
+    if (!UseDOF)
+    {
+        o.vpos.xy = 0.0;
+    }
+    return o;
+}
+
 vs2ps VS_Bloom(uint id : SV_VertexID)
 {   
     vs2ps o = vs_basic(id);
@@ -448,9 +466,17 @@ float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) 
     return color;
 }
 
+//DOF
+float3 BokehBlurPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float size = 1;//calculations
+    float3 color = BokehBlur(spGaussianBlurTex, vpos, texcoord, size); //Some better way of picking between gaussian and linear tex
+    return color;
+}
+
 //Bloom, based on: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
 float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
-{
+{   //CHANGE THIS WHEN DOF ADDED? (or is it more realistic to not?)
     float3 color = (BlurStrength == 0.0) ? tex2D(spLinearTex, texcoord).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
 
     static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
@@ -509,7 +535,7 @@ float3 BloomDownS8(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLO
 float3 BloomUpS7(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
     float3 color = BoxSample(spBloomTex8, texcoord, 0.5);
-    return color;
+    return color * 0.25;
 }
 float3 BloomUpS6(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
@@ -583,6 +609,10 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     }
 
     //DOF
+    if (UseDOF)
+    {
+        //CODE
+    }
 
     //Lens flare
     //probably use radiant vector in some way
@@ -645,14 +675,15 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
         {   //Color noise
             float gauss_noise2 = r * sin(theta);
 	        float gauss_noise3 = (gauss_noise1 + gauss_noise2) * 0.7;
-            color.rgb = color.rgb * (1-weight) + float3(gauss_noise1, gauss_noise2, gauss_noise3) * weight;
+            color.rgb = color.rgb * (1-weight) + Oklab::Saturate_RGB(float3(gauss_noise1, gauss_noise2, gauss_noise3)) * weight;
         }
         else
         {   //Film grain
-            color.rgb = Oklab::Saturate_RGB(color.rgb * (1-weight) + (gauss_noise1 - 0.225) * weight);
+            color.rgb = color.rgb * (1-weight) + (gauss_noise1 - 0.225) * weight;
         }
     }
 
+    if (!Oklab::IS_HDR) { color = Oklab::Saturate_RGB(color); }
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_Linear_to_DisplayFormat(color)
 		: Oklab::Linear_to_DisplayFormat(color);

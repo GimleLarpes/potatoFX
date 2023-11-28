@@ -167,10 +167,10 @@ uniform int FrameCount < source = "framecount"; >;
 #undef DIRT_MAP_SOURCE
 #define DIRT_MAP_SOURCE "pDirtTex.png"
 
-texture pBumpTex < source = BUMP_MAP_SOURCE; pooled = true; > { Width = BUMP_MAP_RESOLUTION; Height = BUMP_MAP_RESOLUTION; Format = RGBA8; };
+texture pBumpTex < source = BUMP_MAP_SOURCE; pooled = true; > { Width = BUMP_MAP_RESOLUTION; Height = BUMP_MAP_RESOLUTION; Format = RG8; };
 sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;}; //GA channels are unused (remember to switch to RGBA8)!!!
 
-texture pDirtTex < source = DIRT_MAP_SOURCE; pooled = true; > { Width = DIRT_MAP_RESOLUTION; Height = DIRT_MAP_RESOLUTION; Format = RG8; };
+texture pDirtTex < source = DIRT_MAP_SOURCE; pooled = true; > { Width = DIRT_MAP_RESOLUTION; Height = DIRT_MAP_RESOLUTION; Format = RGBA8; };
 sampler spDirtTex { Texture = pDirtTex; AddressU = REPEAT; AddressV = REPEAT;};
 
 texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };

@@ -61,6 +61,12 @@ uniform float DirtStrength < __UNIFORM_SLIDER_FLOAT1
     ui_tooltip = "Amount of dirt on the lens";
 	ui_category = "Lens Imperfections";
 > = 0.0;
+uniform float DirtScale < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.5; ui_max = 2.5;
+    ui_label = "Dirt scale";
+    ui_tooltip = "Scaling of dirt texture";
+	ui_category = "Lens Imperfections";
+> = 1.3;
 
 //Bloom
 #if BUFFER_COLOR_SPACE > 1
@@ -150,8 +156,16 @@ uniform int FrameCount < source = "framecount"; >;
 #undef BUMP_MAP_SOURCE
 #define BUMP_MAP_SOURCE "pBumpTex.png"
 
+#undef DIRT_MAP_RESOLUTION
+#define DIRT_MAP_RESOLUTION 1024
+#undef DIRT_MAP_SOURCE
+#define DIRT_MAP_SOURCE "pDirtTex.png"
+
 texture pBumpTex < source = BUMP_MAP_SOURCE; pooled = true; > { Width = BUMP_MAP_RESOLUTION; Height = BUMP_MAP_RESOLUTION; Format = RGBA8; };
 sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;}; //GA channels are unused!!!
+
+texture pDirtTex < source = DIRT_MAP_SOURCE; pooled = true; > { Width = DIRT_MAP_RESOLUTION; Height = DIRT_MAP_RESOLUTION; Format = RGBA8; };
+sampler spDirtTex { Texture = pDirtTex; AddressU = REPEAT; AddressV = REPEAT;};
 
 texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler spLinearTex { Texture = pLinearTex;};
@@ -404,7 +418,7 @@ vs2ps VS_Blur(uint id : SV_VertexID)
 vs2ps VS_Bloom(uint id : SV_VertexID)
 {   
     vs2ps o = vs_basic(id);
-    if (BloomStrength == 0.0)
+    if (BloomStrength == 0.0 && DirtStrength == 0.0)
     {
         o.vpos.xy = 0.0;
     }
@@ -573,20 +587,23 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     //Lens flare
     //probably use radiant vector in some way
 
-    //Chromatic aberration,  THIS WILL NEED TWEAKS WHEN DOF IS IMPLEMENTED
+    //Chromatic aberration,  THIS WILL (maybe) NEED TWEAKS WHEN DOF IS IMPLEMENTED
     float2 radiant_vector = texcoord.xy - 0.5;
     if (CAStrength != 0.0)
     {
-        float3 influence = float3(-40.0, 1.0, 30.0);
+        float3 influence = float3(-0.04, 0.0, 0.03);
 
-        float2 step_length = TEXEL_SIZE * CAStrength * radiant_vector;
+        float2 step_length = CAStrength * radiant_vector;
         color.r = lerp(tex2D(spLinearTex, texcoord + step_length * influence.r).r, tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).r, blur_mix);
-        color.g = lerp(tex2D(spLinearTex, texcoord + step_length * influence.g).g, tex2D(spGaussianBlurTex, texcoord + step_length * influence.g).g, blur_mix);
         color.b = lerp(tex2D(spLinearTex, texcoord + step_length * influence.b).b, tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).b, blur_mix);
     }
 
     //Dirt
-
+    if (DirtStrength != 0.0)
+    {
+        float3 weight = 0.33 * tex2D(spBloomTex6, -radiant_vector + 0.5).rgb;
+        color += tex2D(spDirtTex, texcoord * float2(1.0, TEXEL_SIZE.x / TEXEL_SIZE.y) * DirtScale).rgb * weight * DirtStrength;
+    }
 
     //Bloom
     if (BloomStrength != 0.0)

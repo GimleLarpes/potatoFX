@@ -19,22 +19,72 @@ uniform int GaussianQuality < __UNIFORM_RADIO_INT1
 	ui_tooltip = "Quality and size of gaussian blur";
 	ui_items = "High quality\0Medium quality\0Fast\0";
 	ui_category = "Blur";
-> = 1;
+> = 2;
 
 //DOF
-//Other settings, aperture and focal length?
+#ifndef DOF_SENSOR_SIZE
+    #define DOF_SENSOR_SIZE 36.0
+#endif
 uniform bool UseDOF <
 	ui_type = "bool";
 	ui_label = "Enable DOF";
-    ui_tooltip = "Use depth of field";
-	ui_category = "LUT";
+    ui_tooltip = "Use depth of field\n\nMake sure depth is set up correctly using DisplayDepth.fx";
+	ui_category = "DOF";
 > = false;
+uniform float DOFAperture < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.95; ui_max = 22.0;
+    ui_label = "Aperture";
+    ui_tooltip = "Aperture of the simulated camera";
+	ui_category = "DOF";
+> = 1.4;
+uniform float DOFFocalLength < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 12.0; ui_max = 85.0;
+    ui_label = "Focal length";
+    ui_tooltip = "Focal length of the simulated camera";
+	ui_category = "DOF";
+> = 50.0;
+uniform bool UseDOFAF <
+	ui_type = "bool";
+	ui_label = "Autofocus";
+    ui_tooltip = "Use autofocus";
+	ui_category = "DOF";
+> = true;
+uniform float DOFFocusSpeed < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 5.0;
+    ui_label = "Focus speed";
+    ui_tooltip = "Focus speed in seconds";
+	ui_category = "DOF";
+> = 0.5;
+uniform float DOFFocusPx < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "Focus point X";
+    ui_tooltip = "AF focus point position X (width)\nLeft side = 0\nRight side = 1";
+	ui_category = "DOF";
+> = 0.5;
+uniform float DOFFocusPy < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "Focus point Y";
+    ui_tooltip = "AF focus point position Y (height)\nTop side = 0\nBottom side = 1";
+	ui_category = "DOF";
+> = 0.5;
+uniform float DOFManualFocusDist < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "Manual focus";
+    ui_tooltip = "Manual focus distance, only used when autofocus is disabled";
+	ui_category = "DOF";
+> = 0.5;
 uniform int BokehQuality < __UNIFORM_RADIO_INT1
 	ui_label = "Blur quality";
 	ui_tooltip = "Quality and size of gaussian blur";
 	ui_items = "High quality\0Medium quality\0Fast\0";
 	ui_category = "DOF";
-> = 1;
+> = 2;
+uniform bool DOFDebug <
+	ui_type = "bool";
+	ui_label = "AF debug";
+    ui_tooltip = "Display AF point";
+	ui_category = "DOF";
+> = false;
 
 //Glass imperfections
 uniform float GeoIStrength < __UNIFORM_SLIDER_FLOAT1
@@ -42,15 +92,7 @@ uniform float GeoIStrength < __UNIFORM_SLIDER_FLOAT1
     ui_label = "Glass quality";
     ui_tooltip = "Amount of surface lens imperfections";
 	ui_category = "Lens Imperfections";
-> = 0.0;
-
-//Lens flare
-uniform float FlareStrength < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 1.0;
-    ui_label = "Lens flare amount";
-    ui_tooltip = "Amount of lens flaring";
-	ui_category = "Lens Imperfections";
-> = 0.0;
+> = 0.25;
 
 //Chromatic aberration
 uniform float CAStrength < __UNIFORM_SLIDER_FLOAT1
@@ -58,7 +100,7 @@ uniform float CAStrength < __UNIFORM_SLIDER_FLOAT1
     ui_label = "CA amount";
     ui_tooltip = "Amount of chromatic aberration";
 	ui_category = "Lens Imperfections";
-> = 0.0;
+> = 0.04;
 
 //Dirt
 uniform float DirtStrength < __UNIFORM_SLIDER_FLOAT1
@@ -66,13 +108,13 @@ uniform float DirtStrength < __UNIFORM_SLIDER_FLOAT1
     ui_label = "Dirt amount";
     ui_tooltip = "Amount of dirt on the lens";
 	ui_category = "Lens Imperfections";
-> = 0.0;
+> = 0.12;
 uniform float DirtScale < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.5; ui_max = 2.5;
     ui_label = "Dirt scale";
     ui_tooltip = "Scaling of dirt texture";
 	ui_category = "Lens Imperfections";
-> = 1.3;
+> = 1.35;
 
 //Bloom
 #if BUFFER_COLOR_SPACE > 1
@@ -87,7 +129,7 @@ uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
     ui_label = "Bloom amount";
     ui_tooltip = "Amount of blooming to apply";
 	ui_category = "Bloom";
-> = 0.0;
+> = 0.225;
 uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 1.0; ui_max = 5.0;
     ui_label = "Bloom curve";
@@ -133,7 +175,7 @@ uniform float NoiseStrength < __UNIFORM_SLIDER_FLOAT1
     ui_label = "Noise amount";
     ui_tooltip = "Amount of noise to apply";
 	ui_category = "Noise";
-> = 0.0;
+> = 0.18;
 uniform int NoiseType < __UNIFORM_RADIO_INT1
 	ui_label = "Noise type";
 	ui_tooltip = "Type of noise to use";
@@ -168,7 +210,7 @@ uniform int FrameCount < source = "framecount"; >;
 #define DIRT_MAP_SOURCE "pDirtTex.png"
 
 texture pBumpTex < source = BUMP_MAP_SOURCE; pooled = true; > { Width = BUMP_MAP_RESOLUTION; Height = BUMP_MAP_RESOLUTION; Format = RG8; };
-sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;}; //GA channels are unused (remember to switch to RGBA8)!!!
+sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;};
 
 texture pDirtTex < source = DIRT_MAP_SOURCE; pooled = true; > { Width = DIRT_MAP_RESOLUTION; Height = DIRT_MAP_RESOLUTION; Format = RGBA8; };
 sampler spDirtTex { Texture = pDirtTex; AddressU = REPEAT; AddressV = REPEAT;};
@@ -176,14 +218,12 @@ sampler spDirtTex { Texture = pDirtTex; AddressU = REPEAT; AddressV = REPEAT;};
 texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler spLinearTex { Texture = pLinearTex;};
 
-texture pGaussianBlurTexH < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
-sampler spGaussianBlurTexH { Texture = pGaussianBlurTexH;};
+texture pBokehBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
+sampler spBokehBlurTex { Texture = pBokehBlurTex;};
 texture pGaussianBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spGaussianBlurTex { Texture = pGaussianBlurTex;};
 
-#undef BLOOM_MIP
-#define BLOOM_MIP 1 //doesn't like using functions
-texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; MipLevels = BLOOM_MIP; };
+texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spBloomTex0 { Texture = pBloomTex0;};
 texture pBloomTex1 < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
 sampler spBloomTex1 { Texture = pBloomTex1;};
@@ -212,6 +252,7 @@ float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction)
     float3 color = tex2D(s, texcoord).rgb;
 
     //Weights and offsets, joinked from GaussianBlur.fx by Ioxa
+    [branch]
     if (GaussianQuality == 2) //Low quality
     {   
         static const float OFFSET[4] = { 0.0, 2.3648510476, 6.0586244616, 10.0081402754 };
@@ -225,6 +266,7 @@ float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction)
             color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
         }
     }
+    [branch]
     if (GaussianQuality == 1) //Medium quality
     {   
         static const float OFFSET[6] = { 0.0, 2.9168590336, 6.80796961356, 10.7036115602, 14.605881432, 18.516319419 };
@@ -238,6 +280,7 @@ float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction)
             color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
         }
     }
+    [branch]
     if (GaussianQuality == 0) //High quality
     {   
         static const float OFFSET[11] = { 0.0, 2.9791696802, 6.9514271428, 10.9237593482, 14.8962084654, 18.8688159492, 22.841622294, 26.8146668, 30.7879873556, 34.7616202348, 38.7355999168 };
@@ -254,19 +297,41 @@ float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction)
     return color;
 }
 
-float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
+float3 BokehBlur(sampler s, float2 texcoord, float size)
 {
+    float brightness_compensation;
+    float size_compensation;
+
+    switch (BokehQuality)
+    {
+        case 0:
+        {
+            brightness_compensation = 0.010989010989;
+            size_compensation = 1.0;
+        } break;
+        case 1:
+        {
+            brightness_compensation = 0.027027027027;
+            size_compensation = 1.666666666667;
+        } break;
+        case 2:
+        {
+            brightness_compensation = 0.0769230769231;
+            size_compensation = 2.5;
+        } break;
+    }
+    
     float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    float2 step_length = TEXEL_SIZE * size;
+    float2 step_length = TEXEL_SIZE * size * size_compensation;
 
     static const float MAX_VARIANCE = 0.1;
-    float2 variance = FrameCount * float2(sin(2000*PI*texcoord.x), cos(2000*PI*texcoord.y)) * 1000.0;
+    float2 variance = FrameCount * float2(sin(2000 * PI * texcoord.x), cos(2000 * PI * texcoord.y)) * 1000.0;
     variance %= MAX_VARIANCE;
     variance = 1 + variance - MAX_VARIANCE / 2.0;
     
 
     //Sample points (91 points, 5 rings)
-    //Fast (low quality, 19 points, 2 rings)
+    //Fast (low quality, 13 points, 2 rings)
     float3 color = tex2D(s, texcoord).rgb;
     color += tex2D(s, texcoord + step_length * float2(0, 4) * variance).rgb;
     color += tex2D(s, texcoord + step_length * float2(3.4641, 2) * variance).rgb;
@@ -275,18 +340,13 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
     color += tex2D(s, texcoord + step_length * float2(-3.4641, -2) * variance).rgb;
     color += tex2D(s, texcoord + step_length * float2(-3.4641, 2) * variance).rgb;
     color += tex2D(s, texcoord + step_length * float2(0, 8) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(4, 6.9282) * variance).rgb;
     color += tex2D(s, texcoord + step_length * float2(6.9282, 4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(8, 0) * variance).rgb;
     color += tex2D(s, texcoord + step_length * float2(6.9282, -4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(4, -6.9282) * variance).rgb;
     color += tex2D(s, texcoord + step_length * float2(0, -8) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-4, -6.9282) * variance).rgb;
     color += tex2D(s, texcoord + step_length * float2(-6.9282, -4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-8, 0) * variance).rgb;
     color += tex2D(s, texcoord + step_length * float2(-6.9282, 4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-4, 6.9282) * variance).rgb;
 
+    [branch]
     if (BokehQuality == 0) //High quality (5 rings)
     {
         color += tex2D(s, texcoord + step_length * float2(0, 16) * variance).rgb;
@@ -344,8 +404,16 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
         color += tex2D(s, texcoord + step_length * float2(-8.1347, 18.2709) * variance).rgb;
         color += tex2D(s, texcoord + step_length * float2(-4.1582, 19.563) * variance).rgb;
     }
+    [branch]
     if (BokehQuality < 2) //Medium quality (37 points, 3 rings)
     {
+        //Second ring
+        color += tex2D(s, texcoord + step_length * float2(4, 6.9282) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(8, 0) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(4, -6.9282) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-4, -6.9282) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-8, 0) * variance).rgb;
+        color += tex2D(s, texcoord + step_length * float2(-4, 6.9282) * variance).rgb;
         //Third ring
         color += tex2D(s, texcoord + step_length * float2(0, 12) * variance).rgb;
         color += tex2D(s, texcoord + step_length * float2(4.1042, 11.2763) * variance).rgb;
@@ -365,23 +433,6 @@ float3 BokehBlur(sampler s, float4 vpos, float2 texcoord, float size)
         color += tex2D(s, texcoord + step_length * float2(-10.3923, 6) * variance).rgb;
         color += tex2D(s, texcoord + step_length * float2(-7.7135, 9.1925) * variance).rgb;
         color += tex2D(s, texcoord + step_length * float2(-4.1042, 11.2763) * variance).rgb;
-    }
-
-    float brightness_compensation;
-    switch (BokehQuality)
-    {
-        case 0:
-        {
-            brightness_compensation = 0.010989010989;
-        } break;
-        case 1:
-        {
-            brightness_compensation = 0.027027027027;
-        } break;
-        case 2:
-        {
-            brightness_compensation = 0.0526315789474;
-        } break;
     }
 
     return color * brightness_compensation;
@@ -423,10 +474,14 @@ vs2ps VS_Blur(uint id : SV_VertexID)
     return o;
 }
 
-vs2ps VS_DOF(uint id : SV_VertexID)
+vs2ps VS_DOF(uint id : SV_VertexID)  //save current depth a 1x1 texture?
 {
     vs2ps o = vs_basic(id);
-    if (!UseDOF)
+    if (UseDOF)
+    {
+        o.uv.z = (UseDOFAF) ? ReShade::GetLinearizedDepth(float2(DOFFocusPx, DOFFocusPy)) : DOFManualFocusDist;
+    }
+    else
     {
         o.vpos.xy = 0.0;
     }
@@ -462,22 +517,25 @@ float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) 
 }
 float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = GaussianBlur(spGaussianBlurTexH, texcoord, BlurStrength, float2(0.0, 1.0));
+    float3 color = GaussianBlur(spBokehBlurTex, texcoord, BlurStrength, float2(0.0, 1.0));
     return color;
 }
 
 //DOF
-float3 BokehBlurPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float4 BokehBlurPass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : COLOR
 {
-    float size = 1;//calculations
-    float3 color = BokehBlur(spGaussianBlurTex, vpos, texcoord, size); //Some better way of picking between gaussian and linear tex
+    float size = abs(ReShade::GetLinearizedDepth(texcoord.xy) - texcoord.z) * ((DOFFocalLength*DOFFocalLength/10000) * DOF_SENSOR_SIZE/18) / ((1 + texcoord.z*texcoord.z) * DOFAperture);//Most of this could be thrown in VS (if i can get sampling / writing to o.uv to work)
+    float4 color;
+    color.rgb = (BlurStrength != 0.0) ? BokehBlur(spGaussianBlurTex, texcoord.xy, size) : BokehBlur(spLinearTex, texcoord.xy, size);
+    color.a = size;
+    
     return color;
 }
 
 //Bloom, based on: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
 float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
-{   //CHANGE THIS WHEN DOF ADDED? (or is it more realistic to not?)
-    float3 color = (BlurStrength == 0.0) ? tex2D(spLinearTex, texcoord).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
+{
+    float3 color = (UseDOF) ? tex2D(spBokehBlurTex, texcoord).rgb : (BlurStrength == 0.0) ? tex2D(spLinearTex, texcoord).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
 
     static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
 	float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0);
@@ -592,6 +650,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 	
     ////Effects
     //Glass imperfections
+    [branch]
     if (GeoIStrength != 0.0)
     {
         float2 bump = 0.666666666 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE).xy + 0.333333333 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE * 3).xy;
@@ -611,27 +670,28 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     //DOF
     if (UseDOF)
     {
-        //CODE
+        float4 dof_data = tex2D(spBokehBlurTex, texcoord);
+        float dof_mix = min(10 * dof_data.a, 1.0);
+        color = lerp(color, dof_data.rgb, dof_mix);
     }
 
-    //Lens flare
-    //probably use radiant vector in some way
-
-    //Chromatic aberration,  THIS WILL (maybe) NEED TWEAKS WHEN DOF IS IMPLEMENTED
+    //Chromatic aberration
     float2 radiant_vector = texcoord.xy - 0.5;
+    [branch]
     if (CAStrength != 0.0)
     {
         float3 influence = float3(-0.04, 0.0, 0.03);
 
         float2 step_length = CAStrength * radiant_vector;
-        color.r = lerp(tex2D(spLinearTex, texcoord + step_length * influence.r).r, tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).r, blur_mix);
-        color.b = lerp(tex2D(spLinearTex, texcoord + step_length * influence.b).b, tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).b, blur_mix);
+        color.r = (UseDOF) ? tex2D(spBokehBlurTex, texcoord + step_length * influence.r).r : lerp(tex2D(spLinearTex, texcoord + step_length * influence.r).r, tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).r, blur_mix);
+        color.b = (UseDOF) ? tex2D(spBokehBlurTex, texcoord + step_length * influence.b).b : lerp(tex2D(spLinearTex, texcoord + step_length * influence.b).b, tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).b, blur_mix);
     }
 
     //Dirt
+    [branch]
     if (DirtStrength != 0.0)
     {
-        float3 weight = 0.33 * tex2D(spBloomTex6, -radiant_vector + 0.5).rgb;
+        float3 weight = 0.15 * length(radiant_vector) * tex2D(spBloomTex6, -radiant_vector + 0.5).rgb + 0.25 * tex2D(spBloomTex3, texcoord.xy).rgb;
         color += tex2D(spDirtTex, texcoord * float2(1.0, TEXEL_SIZE.x / TEXEL_SIZE.y) * DirtScale).rgb * weight * DirtStrength;
     }
 
@@ -649,6 +709,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     }
 
     //Noise
+    [branch]
     if (NoiseStrength != 0.0)
     {
         static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
@@ -682,6 +743,15 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
             color.rgb = color.rgb * (1-weight) + (gauss_noise1 - 0.225) * weight;
         }
     }
+    
+    //DEBUG stuff
+    if (DOFDebug)
+    {
+        if (distance(texcoord, float2(DOFFocusPx, DOFFocusPy)) < 0.01)
+        {
+            color.rgb = float3(1.0, 0, 0) * INVNORM_FACTOR;
+        }
+    }
 
     if (!Oklab::IS_HDR) { color = Oklab::Saturate_RGB(color); }
 	color = (UseApproximateTransforms)
@@ -701,12 +771,18 @@ technique Effects <ui_tooltip =
 
 
 	pass
-    {//This is also used in DOF(?) or just use gaussian for both near and far field (1 quality step lower than far field blur?)
-        VertexShader = VS_Blur; PixelShader = GaussianBlurPass1; RenderTarget = pGaussianBlurTexH;
+    {
+        VertexShader = VS_Blur; PixelShader = GaussianBlurPass1; RenderTarget = pBokehBlurTex;
     }
     pass
     {
         VertexShader = VS_Blur; PixelShader = GaussianBlurPass2; RenderTarget = pGaussianBlurTex;
+    }
+
+
+    pass
+    {
+        VertexShader = VS_DOF; PixelShader = BokehBlurPass; RenderTarget = pBokehBlurTex;
     }
 
 

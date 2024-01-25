@@ -293,7 +293,10 @@ uniform float LUT_WhitePoint < __UNIFORM_SLIDER_FLOAT1
 #ifndef fLUT_Resolution
 	#define fLUT_Resolution 32.0
 #endif
-texture LUT < source = fLUT_TextureName; > { Height = fLUT_Resolution; Width = fLUT_Resolution * fLUT_Resolution; Format = RGBA8; };//how to detect if its 8 or 16 bit?hopefully 16 works, what happens if you sample 8 bit as 16 bit?
+#ifndef fLUT_Format
+	#define fLUT_Format RGBA8
+#endif
+texture LUT < source = fLUT_TextureName; > { Height = fLUT_Resolution; Width = fLUT_Resolution * fLUT_Resolution; Format = fLUT_Format; };
 sampler sLUT { Texture = LUT; };
 
 

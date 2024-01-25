@@ -7,6 +7,9 @@
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
 
+#undef PI
+#define PI 3.1415927
+
 //White balance
 uniform float WBTemperature < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -0.25; ui_max = 0.25;
@@ -370,7 +373,6 @@ float3 Manipulate_By_Hue(float3 color, float3 hue, float hue_shift, float hue_sa
 float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
-	static const float PI = 3.1415927;
 
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)

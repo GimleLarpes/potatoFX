@@ -6,7 +6,7 @@
 // Sources for HDR transfer functions:
 // ST2084:  https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7291452
 // HLG:     https://www.itu.int/rec/R-REC-BT.2100-2-201807-I/en
-// scRGB:   https://en.wikipedia.org/wiki/ScRGB
+// scRGB:   IEC 61966-2-2:2003 alt. https://en.wikipedia.org/wiki/ScRGB
 //
 // Conversions are between sRGB <-> Linear RGB <-> CIE-XYZ <-> Oklab <-> LCh
 ///////////////////////////////////////////////////////////////////////////////////
@@ -16,7 +16,7 @@ namespace Oklab
 {
     //Constants
     static const float PI = pUtils::PI;
-    static const float EPSILON = 1e-10;
+    static const float EPSILON = pUtils::EPSILON;
 
     static const float SDR_WHITEPOINT = 80.0; //Set HDR sRGB equivalent whitelevel to 80 to match 0-1 SDR
 

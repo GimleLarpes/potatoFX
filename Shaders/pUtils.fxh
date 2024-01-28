@@ -4,7 +4,7 @@ namespace pUtils
 //Constants
 static const float PI = 3.1415927;
 static const float EPSILON = 1e-10;
-static const float2 ASPECT_RATIO = float2(1.0, BUFFER_HEIGHT/BUFFER_WIDTH);
+static const float2 ASPECT_RATIO = float2(1.0, 1.0/BUFFER_ASPECT_RATIO);
 
 //--fastatan2
 float fastatan2(float y, float x)//error < 0.2 degrees, saves about 40% vs atan2 developed by Lord of Lunacy and Marty McFly

@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////////
-// pEffects.fx by Gimle Larpes
+// pCamera.fx by Gimle Larpes
 // A high performance all-in-one shader with many common lens and camera effects.
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -42,7 +42,7 @@ uniform float DOFFocalLength < __UNIFORM_SLIDER_FLOAT1
     ui_label = "Focal length";
     ui_tooltip = "Focal length of the simulated camera";
 	ui_category = "DOF";
-> = 50.0;
+> = 35.0;
 uniform bool UseDOFAF <
 	ui_type = "bool";
 	ui_label = "Autofocus";
@@ -50,11 +50,11 @@ uniform bool UseDOFAF <
 	ui_category = "DOF";
 > = true;
 uniform float DOFFocusSpeed < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 5.0;
+	ui_min = 0.01; ui_max = 1.0;
     ui_label = "Focus speed";
-    ui_tooltip = "Focus speed in seconds";
+    ui_tooltip = "Focus speed";
 	ui_category = "DOF";
-> = 0.5;
+> = 0.1;
 uniform float DOFFocusPx < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_label = "Focus point X";
@@ -84,6 +84,33 @@ uniform bool DOFDebug <
 	ui_label = "AF debug";
     ui_tooltip = "Display AF point";
 	ui_category = "DOF";
+> = false;
+
+//Fish eye
+uniform bool UseFE <
+	ui_type = "bool";
+	ui_label = "Fisheye";
+    ui_tooltip = "Adds fisheye distortion";
+	ui_category = "Fisheye";
+> = false;
+uniform int FEFoV < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 20u; ui_max = 160u;
+    ui_label = "FOV";
+    ui_tooltip = "FOV in degrees\n\n(set to in-game FOV)";
+	ui_category = "Fisheye";
+    ui_units = "°";
+> = 90u;
+uniform float FECrop < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+    ui_label = "Crop";
+    ui_tooltip = "How much to crop into the image\n\n(0 = circular, 1 = full-frame)";
+	ui_category = "Fisheye";
+> = 0.0;
+uniform bool FEVFOV <
+	ui_type = "bool";
+	ui_label = "Use vertical FOV";
+    ui_tooltip = "Assume FOV is vertical\n\n(enable if FOV is given as vertical FOV)";
+	ui_category = "Fisheye";
 > = false;
 
 //Glass imperfections
@@ -183,6 +210,25 @@ uniform int NoiseType < __UNIFORM_RADIO_INT1
 	ui_category = "Noise";
 > = 0;
 
+//Auto exposure
+uniform bool UseAE <
+	ui_type = "bool";
+	ui_label = "Auto exposure";
+    ui_tooltip = "Enable auto exposure";
+	ui_category = "Auto Exposure";
+> = false;
+uniform float AESpeed < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.01; ui_max = 1.0;
+    ui_label = "Speed";
+    ui_tooltip = "Auto exposure adaption speed";
+	ui_category = "Auto Exposure";
+> = 0.1;
+uniform float AETarget < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.01; ui_max = 1.0;
+    ui_label = "Target";
+    ui_tooltip = "Exposure target";
+	ui_category = "Auto Exposure";
+> = 0.5;
 
 
 //Performance
@@ -196,6 +242,8 @@ uniform bool UseApproximateTransforms <
 uniform int FrameCount < source = "framecount"; >;
 #undef PI
 #define PI 3.1415927
+#undef EPSILON
+#define EPSILON 1e-10
 
 #undef BUMP_MAP_RESOLUTION
 #define BUMP_MAP_RESOLUTION 32
@@ -208,6 +256,9 @@ uniform int FrameCount < source = "framecount"; >;
 #define DIRT_MAP_RESOLUTION 1024
 #undef DIRT_MAP_SOURCE
 #define DIRT_MAP_SOURCE "pDirtTex.png"
+
+texture pStorageTex < pooled = true; > { Width = 1; Height = 1; Format = RG16F; };
+sampler spStorageTex { Texture = pStorageTex; };
 
 texture pBumpTex < source = BUMP_MAP_SOURCE; pooled = true; > { Width = BUMP_MAP_RESOLUTION; Height = BUMP_MAP_RESOLUTION; Format = RG8; };
 sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;};
@@ -240,7 +291,7 @@ sampler spBloomTex6 { Texture = pBloomTex6;};
 texture pBloomTex7 < pooled = true; > { Width = BUFFER_WIDTH/256; Height = BUFFER_HEIGHT/256; Format = RGBA16F; };
 sampler spBloomTex7 { Texture = pBloomTex7;};
 texture pBloomTex8 < pooled = true; > { Width = BUFFER_WIDTH/512; Height = BUFFER_HEIGHT/512; Format = RGBA16F; };
-sampler spBloomTex8 { Texture = pBloomTex8;};
+sampler spBloomTex8 { Texture = pBloomTex8;}; //LOD STUFF???------------------------------------------------------
 
 
 //Functions
@@ -464,6 +515,13 @@ vs2ps vs_basic(const uint id)
     return o;
 }
 
+vs2ps VS_Storage(uint id : SV_VertexID)
+{
+    vs2ps o = vs_basic(id);
+    o.vpos.xy = 0.0; //Try to only execute on one pixel (how to?)
+    return o;
+}
+
 vs2ps VS_Blur(uint id : SV_VertexID)
 {
     vs2ps o = vs_basic(id);
@@ -474,12 +532,15 @@ vs2ps VS_Blur(uint id : SV_VertexID)
     return o;
 }
 
-vs2ps VS_DOF(uint id : SV_VertexID)  //save current depth a 1x1 texture?
+vs2ps VS_DOF(uint id : SV_VertexID)  //save current depth a 1x1 texture? this would be in its own pass(duh)
 {
     vs2ps o = vs_basic(id);
     if (UseDOF)
     {
-        o.uv.z = (UseDOFAF) ? ReShade::GetLinearizedDepth(float2(DOFFocusPx, DOFFocusPy)) : DOFManualFocusDist;
+        float depth = 1.0;//(UseDOFAF) ? tex2D(spStorageTex, 0.5).x : DOFManualFocusDist; //sample af depth fromaf texture, af texture samples from af texture and depthtex
+        float scale = ((DOFFocalLength*DOFFocalLength / 10000) * DOF_SENSOR_SIZE / 18) / ((1 + depth*depth) * DOFAperture) * length(float2(BUFFER_WIDTH, BUFFER_HEIGHT))/2048;
+        o.uv.z = depth;
+        o.uv.w = scale;
     }
     else
     {
@@ -509,6 +570,17 @@ float3 LinearizePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : CO
     return color;
 }
 
+float2 StoragePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    float2 data = tex2D(spStorageTex, 0.5).xy;
+    //Sample DOF
+    data.x = lerp(data.x, ReShade::GetLinearizedDepth(float2(DOFFocusPx, DOFFocusPy)), DOFFocusSpeed*DOFFocusSpeed);
+
+    //Sample AE
+    data.y = lerp(data.y, Oklab::Luma_RGB(Oklab::Normalize(tex2D(spLinearTex, 0.5).rgb)), AESpeed*AESpeed); //Somehow sample blurred texture, LOD???
+    return data; //also maybe use adapted luma  float adapted_luma = min(2.0 * luma / Oklab::PAPER_WHITE, 1.0); //that would prevent issues in HDR
+}
+
 //Blur
 float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
@@ -524,7 +596,7 @@ float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) 
 //DOF
 float4 BokehBlurPass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : COLOR
 {
-    float size = abs(ReShade::GetLinearizedDepth(texcoord.xy) - texcoord.z) * ((DOFFocalLength*DOFFocalLength/10000) * DOF_SENSOR_SIZE/18) / ((1 + texcoord.z*texcoord.z) * DOFAperture);//Most of this could be thrown in VS (if i can get sampling / writing to o.uv to work)
+    float size = abs(ReShade::GetLinearizedDepth(texcoord.xy) - texcoord.z) * texcoord.w;
     float4 color;
     color.rgb = (BlurStrength != 0.0) ? BokehBlur(spGaussianBlurTex, texcoord.xy, size) : BokehBlur(spLinearTex, texcoord.xy, size);
     color.a = size;
@@ -647,13 +719,42 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 {
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
     static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float2 radiant_vector = texcoord.xy - 0.5;
+    float2 texcoord_clean = texcoord.xy;
 	
     ////Effects
+    //Fisheye
+    if (UseFE)
+    {
+        float diagonal_length = length(pUtils::ASPECT_RATIO);
+
+        float fov_factor = PI * FEFoV/360;
+        if (FEVFOV)
+        {
+            fov_factor = atan(tan(fov_factor) * BUFFER_ASPECT_RATIO);
+        }
+        float fit_fov = sin(atan(tan(fov_factor) * diagonal_length));
+        float crop_value = lerp(1.0 + (diagonal_length - 1.0) * cos(fov_factor), diagonal_length, FECrop * pow(sin(fov_factor), 6.0));//This is stupid and there is a better way.
+
+        //Circularize radiant vector and apply cropping
+        float2 cn_radiant_vector = 2 * radiant_vector * pUtils::ASPECT_RATIO / crop_value * fit_fov;
+
+        if (length(cn_radiant_vector) < 1.0)
+        {
+            //Calculate z-coordinate and angle
+            float z = sqrt(1.0 - cn_radiant_vector.x*cn_radiant_vector.x - cn_radiant_vector.y*cn_radiant_vector.y);
+            float theta = acos(z) / fov_factor;
+
+            float2 d = normalize(cn_radiant_vector);
+            texcoord = (theta * d) / (2 * pUtils::ASPECT_RATIO) + 0.5;
+        } 
+    }
+
     //Glass imperfections
     [branch]
     if (GeoIStrength != 0.0)
     {
-        float2 bump = 0.666666666 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE).xy + 0.333333333 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE * 3).xy;
+        float2 bump = 0.6666667 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE).xy + 0.33333334 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE * 3).xy;
     
 	    bump = bump * 2.0 - 1.0;
         texcoord += bump * TEXEL_SIZE * (GeoIStrength * GeoIStrength);
@@ -676,7 +777,6 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     }
 
     //Chromatic aberration
-    float2 radiant_vector = texcoord.xy - 0.5;
     [branch]
     if (CAStrength != 0.0)
     {
@@ -704,7 +804,7 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     //Vignette
     if (VignetteStrength != 0.0)
     {
-        float weight = clamp((length(float2(abs(texcoord.x - 0.5) * rcp(VignetteWidth), abs(texcoord.y - 0.5))) - VignetteInnerRadius) / (VignetteOuterRadius - VignetteInnerRadius), 0.0, 1.0);
+        float weight = clamp((length(float2(abs(texcoord_clean.x - 0.5) * rcp(VignetteWidth), abs(texcoord_clean.y - 0.5))) - VignetteInnerRadius) / (VignetteOuterRadius - VignetteInnerRadius), 0.0, 1.0);
         color.rgb *= 1 - VignetteStrength * weight;
     }
 
@@ -713,20 +813,30 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
     if (NoiseStrength != 0.0)
     {
         static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
-        static const float SPEED = (NoiseType == 1) ? 60 : 1;
-	
-	    float t = FrameCount * 0.456035462415 * SPEED;
-	    t %= 263; t += 37;
-	    float luma = dot(color, float3(0.2126, 0.7152, 0.0722));
 
-	    float seed = dot(texcoord, float2(12.9898, 78.233));
-	    float uniform_noise1 = frac(sin(seed) * 413.458333333 * t);
-	    float uniform_noise2 = frac(cos(seed) * 524.894736842 * t);
+        float noise_speed = 1;
+	    float noise_coord = texcoord_clean;
+        if (NoiseType == 1)
+        {
+           noise_coord /= PI;
+           noise_speed = 60;
+        }
 
-	    uniform_noise1 = (uniform_noise1 < 0.0001) ? 0.0001 : uniform_noise1; //fix log(0)
+        //REDO NOISE
+
+        float t = FrameCount * 0.456035462415 * noise_speed;
+	    t %= 10000;
+	    float luma = Oklab::Luma_RGB(color);
+
+
+	    float seed = dot(texcoord_clean, float2(12.9898 * t, 78.233)); //12.9898, 78.233
+	    float uniform_noise1 = frac((sin(seed * t) * 0.5 + 0.5) * t);// * 413.458333333 * t
+	    float uniform_noise2 = frac((cos(seed * t) * 0.5 + 0.5) * t);// * 524.894736842 * t
+
+	    uniform_noise1 = (uniform_noise1 < EPSILON) ? EPSILON : uniform_noise1; //fix log(0)
 		
 	    float r = sqrt(-log(uniform_noise1));
-	    r = (uniform_noise1 < 0.0001) ? PI : r; //fix log(0) - PI happened to be the right answer for uniform_noise == ~ 0.0000517
+	    r = (uniform_noise1 < EPSILON) ? PI : r; //fix log(0) - PI happened to be the right answer for uniform_noise == ~ 0.0000517
 	    float theta = 2.0 * PI * uniform_noise2;
 	
 	    float gauss_noise1 = r * cos(theta);
@@ -736,18 +846,25 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
         {   //Color noise
             float gauss_noise2 = r * sin(theta);
 	        float gauss_noise3 = (gauss_noise1 + gauss_noise2) * 0.7;
-            color.rgb = color.rgb * (1-weight) + Oklab::Saturate_RGB(float3(gauss_noise1, gauss_noise2, gauss_noise3)) * weight;
+            color.rgb = color.rgb * (1-weight) + Oklab::Saturate_RGB(float3(gauss_noise1, gauss_noise2, gauss_noise3)) * weight; //Change this to be color * (1-weight + noise * weight)
         }
         else
         {   //Film grain
             color.rgb = color.rgb * (1-weight) + (gauss_noise1 - 0.225) * weight;
         }
+        //color.rgb = uniform_noise1; //DEBUG
+    }
+
+    //Auto exposure
+    if (UseAE)
+    {
+        color *= AETarget / tex2D(spStorageTex, 0.5).y;
     }
     
     //DEBUG stuff
     if (DOFDebug)
     {
-        if (distance(texcoord, float2(DOFFocusPx, DOFFocusPy)) < 0.01)
+        if (pow((texcoord_clean.x - DOFFocusPx) * BUFFER_ASPECT_RATIO, 2.0) + pow(texcoord_clean.y - DOFFocusPy, 2.0) < 0.0001)
         {
             color.rgb = float3(1.0, 0, 0) * INVNORM_FACTOR;
         }
@@ -760,13 +877,17 @@ float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_T
 	return color.rgb;
 }
 
-technique Effects <ui_tooltip = 
-"A high performance all-in-one shader with many common lens and camera effects.\n\n"
+technique Camera <ui_tooltip = 
+"A high performance all-in-one shader with many common camera and lens effects.\n\n"
 "(HDR compatible)";>
 {
     pass
     {
         VertexShader = PostProcessVS; PixelShader = LinearizePass; RenderTarget = pLinearTex;
+    }
+    pass
+    {
+        VertexShader = VS_Storage; PixelShader = StoragePass; RenderTarget = pStorageTex;
     }
 
 

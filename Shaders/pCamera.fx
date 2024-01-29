@@ -715,7 +715,7 @@ float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 
 
 
-float3 EffectsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
+float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
     static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
@@ -937,6 +937,6 @@ technique Camera <ui_tooltip =
     
     pass
 	{
-		VertexShader = PostProcessVS; PixelShader = EffectsPass;
+		VertexShader = PostProcessVS; PixelShader = CameraPass;
 	}
 }

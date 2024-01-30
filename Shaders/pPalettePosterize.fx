@@ -123,7 +123,7 @@ float3 PosterizeDitherPass(float4 vpos : SV_Position, float2 texcoord : TexCoord
 	}
 
 	color.r = ceil(luminance * NumColors) / NumColors;
-	color.g = DesaturateHighlights
+	color.g = (DesaturateHighlights)
 		? BaseColor.g * (1 - (luminance_norm * luminance_norm) * DesaturateFactor)
 		: BaseColor.g;
 	color.b = BaseColor.b + (color.r - rcp(NumColors)) * hue_range + hue_offset;

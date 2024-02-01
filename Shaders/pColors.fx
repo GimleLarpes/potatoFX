@@ -7,8 +7,7 @@
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
 
-#undef PI
-#define PI 3.1415927
+static const float PI = pUtils::PI;
 
 //White balance
 uniform float WBTemperature < __UNIFORM_SLIDER_FLOAT1

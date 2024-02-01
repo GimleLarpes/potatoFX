@@ -12,6 +12,11 @@
 ///////////////////////////////////////////////////////////////////////////////////
 #include "pUtils.fxh"
 
+//Version check
+#if !defined(__RESHADE__) || __RESHADE__ < 50100
+    #error "Outdated ReShade installation - ReShade 5.1+ is required"
+#endif
+
 namespace Oklab
 {
     //Constants

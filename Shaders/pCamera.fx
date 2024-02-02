@@ -7,6 +7,16 @@
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
 
+//Version check
+#if !defined(__RESHADE__) || __RESHADE__ < 50900
+    #error "Outdated ReShade installation - ReShade 5.9+ is required"
+#endif
+
+uniform int FrameCount < source = "framecount"; >;
+uniform float FrameTime < source = "frametime"; >;
+static const float PI = pUtils::PI;
+static const float EPSILON = pUtils::EPSILON;
+
 //Blur
 uniform float BlurStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
@@ -37,12 +47,13 @@ uniform float DOFAperture < __UNIFORM_SLIDER_FLOAT1
     ui_tooltip = "Aperture of the simulated camera";
 	ui_category = "DOF";
 > = 1.4;
-uniform float DOFFocalLength < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 12.0; ui_max = 85.0;
+uniform int DOFFocalLength < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 12u; ui_max = 85u;
     ui_label = "Focal length";
     ui_tooltip = "Focal length of the simulated camera";
 	ui_category = "DOF";
-> = 35.0;
+    ui_units = " mm";
+> = 35u;
 uniform bool UseDOFAF <
 	ui_type = "bool";
 	ui_label = "Autofocus";
@@ -50,11 +61,12 @@ uniform bool UseDOFAF <
 	ui_category = "DOF";
 > = true;
 uniform float DOFFocusSpeed < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.01; ui_max = 1.0;
+	ui_min = 0.0; ui_max = 10.0;
     ui_label = "Focus speed";
-    ui_tooltip = "Focus speed";
+    ui_tooltip = "Focus speed in seconds";
 	ui_category = "DOF";
-> = 0.1;
+    ui_units = " s";
+> = 1.0;
 uniform float DOFFocusPx < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_label = "Focus point X";
@@ -211,6 +223,12 @@ uniform int NoiseType < __UNIFORM_RADIO_INT1
 > = 0;
 
 //Auto exposure
+#ifndef AE_RANGE
+    #define AE_RANGE 1.0
+#endif
+#ifndef AE_MIN_BRIGHTNESS
+    #define AE_MIN_BRIGHTNESS 0.05
+#endif
 uniform bool UseAE <
 	ui_type = "bool";
 	ui_label = "Auto exposure";
@@ -218,13 +236,20 @@ uniform bool UseAE <
 	ui_category = "Auto Exposure";
 > = false;
 uniform float AESpeed < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.01; ui_max = 1.0;
+	ui_min = 0.0; ui_max = 10.0;
     ui_label = "Speed";
-    ui_tooltip = "Auto exposure adaption speed";
+    ui_tooltip = "Auto exposure adaption speed in seconds";
 	ui_category = "Auto Exposure";
-> = 0.1;
+    ui_units = " s";
+> = 1.0;
+uniform float AEGain < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.1; ui_max = 1.0;
+    ui_label = "Gain";
+    ui_tooltip = "Auto exposure gain";
+	ui_category = "Auto Exposure";
+> = 0.5;
 uniform float AETarget < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.01; ui_max = 1.0;
+	ui_min = AE_MIN_BRIGHTNESS; ui_max = 1.0;
     ui_label = "Target";
     ui_tooltip = "Exposure target";
 	ui_category = "Auto Exposure";
@@ -239,34 +264,38 @@ uniform bool UseApproximateTransforms <
 	ui_category = "Performance";
 > = false;
 
-uniform int FrameCount < source = "framecount"; >;
-#undef PI
-#define PI 3.1415927
-#undef EPSILON
-#define EPSILON 1e-10
 
-#undef BUMP_MAP_RESOLUTION
-#define BUMP_MAP_RESOLUTION 32
-#undef BUMP_MAP_SCALE
-#define BUMP_MAP_SCALE 4
-#undef BUMP_MAP_SOURCE
-#define BUMP_MAP_SOURCE "pBumpTex.png"
+#ifndef _BUMP_MAP_RESOLUTION
+    #define _BUMP_MAP_RESOLUTION 32
+#endif
+#ifndef _BUMP_MAP_SCALE
+    #define _BUMP_MAP_SCALE 4
+#endif
+#ifndef _BUMP_MAP_SOURCE
+    #define _BUMP_MAP_SOURCE "pBumpTex.png"
+#endif
 
-#undef DIRT_MAP_RESOLUTION
-#define DIRT_MAP_RESOLUTION 1024
-#undef DIRT_MAP_SOURCE
-#define DIRT_MAP_SOURCE "pDirtTex.png"
+#ifndef _DIRT_MAP_RESOLUTION
+    #define _DIRT_MAP_RESOLUTION 1024
+#endif
+#ifndef _DIRT_MAP_SOURCE
+    #define _DIRT_MAP_SOURCE "pDirtTex.png"
+#endif
+
+static const int BUFFER_MIP_LEVELS = 1; //calculate log2 of buffer width and height and select lowest one
 
 texture pStorageTex < pooled = true; > { Width = 1; Height = 1; Format = RG16F; };
 sampler spStorageTex { Texture = pStorageTex; };
+texture pStorageTexC < pooled = true; > { Width = 1; Height = 1; Format = RG16F; };
+sampler spStorageTexC { Texture = pStorageTexC; };
 
-texture pBumpTex < source = BUMP_MAP_SOURCE; pooled = true; > { Width = BUMP_MAP_RESOLUTION; Height = BUMP_MAP_RESOLUTION; Format = RG8; };
+texture pBumpTex < source = _BUMP_MAP_SOURCE; pooled = true; > { Width = _BUMP_MAP_RESOLUTION; Height = _BUMP_MAP_RESOLUTION; Format = RG8; };
 sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;};
 
-texture pDirtTex < source = DIRT_MAP_SOURCE; pooled = true; > { Width = DIRT_MAP_RESOLUTION; Height = DIRT_MAP_RESOLUTION; Format = RGBA8; };
+texture pDirtTex < source = _DIRT_MAP_SOURCE; pooled = true; > { Width = _DIRT_MAP_RESOLUTION; Height = _DIRT_MAP_RESOLUTION; Format = RGBA8; };
 sampler spDirtTex { Texture = pDirtTex; AddressU = REPEAT; AddressV = REPEAT;};
 
-texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
+texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; MipLevels = BUFFER_MIP_LEVELS; };
 sampler spLinearTex { Texture = pLinearTex;};
 
 texture pBokehBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
@@ -274,7 +303,7 @@ sampler spBokehBlurTex { Texture = pBokehBlurTex;};
 texture pGaussianBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spGaussianBlurTex { Texture = pGaussianBlurTex;};
 
-texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
+texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; }; //LOD STUFF???------------------------------------------------------
 sampler spBloomTex0 { Texture = pBloomTex0;};
 texture pBloomTex1 < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
 sampler spBloomTex1 { Texture = pBloomTex1;};
@@ -291,7 +320,7 @@ sampler spBloomTex6 { Texture = pBloomTex6;};
 texture pBloomTex7 < pooled = true; > { Width = BUFFER_WIDTH/256; Height = BUFFER_HEIGHT/256; Format = RGBA16F; };
 sampler spBloomTex7 { Texture = pBloomTex7;};
 texture pBloomTex8 < pooled = true; > { Width = BUFFER_WIDTH/512; Height = BUFFER_HEIGHT/512; Format = RGBA16F; };
-sampler spBloomTex8 { Texture = pBloomTex8;}; //LOD STUFF???------------------------------------------------------
+sampler spBloomTex8 { Texture = pBloomTex8;};
 
 
 //Functions
@@ -302,12 +331,12 @@ float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction)
 
     float3 color = tex2D(s, texcoord).rgb;
 
-    //Weights and offsets, joinked from GaussianBlur.fx by Ioxa
+    //Weights and offsets, yoinked from GaussianBlur.fx by Ioxa
     [branch]
     if (GaussianQuality == 2) //Low quality
     {   
         static const float OFFSET[4] = { 0.0, 2.3648510476, 6.0586244616, 10.0081402754 };
-	    static const float WEIGHT[4] = { 0.39894, 0.2959599993, 0.0045656525, 0.00000149278686458842 };
+        static const float WEIGHT[4] = { 0.39894, 0.2959599993, 0.0045656525, 0.00000149278686458842 };
         
         color *= WEIGHT[0]; //For some reason these loops have to be in here and not the main function body
         [loop]
@@ -321,7 +350,7 @@ float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction)
     if (GaussianQuality == 1) //Medium quality
     {   
         static const float OFFSET[6] = { 0.0, 2.9168590336, 6.80796961356, 10.7036115602, 14.605881432, 18.516319419 };
-	    static const float WEIGHT[6] = { 0.13298, 0.23227575, 0.1353261595, 0.0511557427, 0.01253922, 0.0019913644 };
+        static const float WEIGHT[6] = { 0.13298, 0.23227575, 0.1353261595, 0.0511557427, 0.01253922, 0.0019913644 };
         
         color *= WEIGHT[0];
         [loop]
@@ -335,7 +364,7 @@ float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction)
     if (GaussianQuality == 0) //High quality
     {   
         static const float OFFSET[11] = { 0.0, 2.9791696802, 6.9514271428, 10.9237593482, 14.8962084654, 18.8688159492, 22.841622294, 26.8146668, 30.7879873556, 34.7616202348, 38.7355999168 };
-	    static const float WEIGHT[11] = { 0.06649, 0.1284697563, 0.111918249, 0.0873132676, 0.0610011113, 0.0381655709, 0.0213835661, 0.0107290241, 0.0048206869, 0.0019396469, 0.0006988718 };
+        static const float WEIGHT[11] = { 0.06649, 0.1284697563, 0.111918249, 0.0873132676, 0.0610011113, 0.0381655709, 0.0213835661, 0.0107290241, 0.0048206869, 0.0019396469, 0.0006988718 };
         
         color *= WEIGHT[0];
         [loop]
@@ -515,13 +544,6 @@ vs2ps vs_basic(const uint id)
     return o;
 }
 
-vs2ps VS_Storage(uint id : SV_VertexID)
-{
-    vs2ps o = vs_basic(id);
-    o.vpos.xy = 0.0; //Try to only execute on one pixel (how to?)
-    return o;
-}
-
 vs2ps VS_Blur(uint id : SV_VertexID)
 {
     vs2ps o = vs_basic(id);
@@ -532,13 +554,14 @@ vs2ps VS_Blur(uint id : SV_VertexID)
     return o;
 }
 
-vs2ps VS_DOF(uint id : SV_VertexID)  //save current depth a 1x1 texture? this would be in its own pass(duh)
+vs2ps VS_DOF(uint id : SV_VertexID)
 {
     vs2ps o = vs_basic(id);
     if (UseDOF)
     {
-        float depth = 1.0;//(UseDOFAF) ? tex2D(spStorageTex, 0.5).x : DOFManualFocusDist; //sample af depth fromaf texture, af texture samples from af texture and depthtex
-        float scale = ((DOFFocalLength*DOFFocalLength / 10000) * DOF_SENSOR_SIZE / 18) / ((1 + depth*depth) * DOFAperture) * length(float2(BUFFER_WIDTH, BUFFER_HEIGHT))/2048;
+        float depth = 1;//tex2Dfetch(spStorageTex, 0).x; //Why doesn't this work? - "Cannot map to vs_5_0 instruction set", but reshade get linearized depth works
+        //(UseDOFAF) ? tex2Dfetch(spStorageTex, 0).x : DOFManualFocusDist; //sample af depth fromaf texture, af texture samples from af texture and depthtex
+        float scale = ((float(DOFFocalLength*DOFFocalLength) / 10000) * DOF_SENSOR_SIZE / 18) / ((1 + depth*depth) * DOFAperture) * length(float2(BUFFER_WIDTH, BUFFER_HEIGHT))/2048;
         o.uv.z = depth;
         o.uv.w = scale;
     }
@@ -572,25 +595,33 @@ float3 LinearizePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : CO
 
 float2 StoragePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float2 data = tex2D(spStorageTex, 0.5).xy;
+    [branch] //TEST TO SEE IF THIS IMPROVES OR HAMPERS PERFORMANCE
+    if (!((UseDOFAF && UseDOF) || UseAE))
+    {
+        discard;
+    }
+
+    float2 data = tex2Dfetch(spStorageTexC, 0).xy;
     //Sample DOF
-    data.x = lerp(data.x, ReShade::GetLinearizedDepth(float2(DOFFocusPx, DOFFocusPy)), DOFFocusSpeed*DOFFocusSpeed);
+    data.x = lerp(data.x, ReShade::GetLinearizedDepth(float2(DOFFocusPx, DOFFocusPy)), min(FrameTime / (DOFFocusSpeed * 1000 + EPSILON), 1.0));
 
     //Sample AE
-    data.y = lerp(data.y, Oklab::Luma_RGB(Oklab::Normalize(tex2D(spLinearTex, 0.5).rgb)), AESpeed*AESpeed); //Somehow sample blurred texture, LOD???
-    return data; //also maybe use adapted luma  float adapted_luma = min(2.0 * luma / Oklab::PAPER_WHITE, 1.0); //that would prevent issues in HDR
+    data.y = lerp(data.y, max(min(2.0 * Oklab::Luma_RGB(tex2Dlod(spLinearTex, float4(0.5, 0.5, 0, BUFFER_MIP_LEVELS - 1)).rgb) / Oklab::HDR_PAPER_WHITE, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
+    return data.xy;
+}
+float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+{
+    return tex2Dfetch(spStorageTex, 0).xy;
 }
 
 //Blur
 float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = GaussianBlur(spLinearTex, texcoord, BlurStrength, float2(1.0, 0.0));
-    return color;
+    return GaussianBlur(spLinearTex, texcoord, BlurStrength, float2(1.0, 0.0));
 }
 float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = GaussianBlur(spBokehBlurTex, texcoord, BlurStrength, float2(0.0, 1.0));
-    return color;
+    return GaussianBlur(spBokehBlurTex, texcoord, BlurStrength, float2(0.0, 1.0));
 }
 
 //DOF
@@ -610,7 +641,7 @@ float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : C
     float3 color = (UseDOF) ? tex2D(spBokehBlurTex, texcoord).rgb : (BlurStrength == 0.0) ? tex2D(spLinearTex, texcoord).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
 
     static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
-	float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0);
+    float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0);
 
     if (!Oklab::IS_HDR)
     {
@@ -623,79 +654,64 @@ float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : C
 //Downsample
 float3 BloomDownS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex0, texcoord, 1.0);
-    return color;
+    return BoxSample(spBloomTex0, texcoord, 1.0);
 }
 float3 BloomDownS2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex1, texcoord, 1.0);
-    return color;
+    return BoxSample(spBloomTex1, texcoord, 1.0);
 }
 float3 BloomDownS3(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex2, texcoord, 1.0);
-    return color;
+    return BoxSample(spBloomTex2, texcoord, 1.0);
 }
 float3 BloomDownS4(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex3, texcoord, 1.0);
-    return color;
+    return BoxSample(spBloomTex3, texcoord, 1.0);
 }
 float3 BloomDownS5(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex4, texcoord, 1.0);
-    return color;
+    return BoxSample(spBloomTex4, texcoord, 1.0);
 }
 float3 BloomDownS6(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex5, texcoord, 1.0);
-    return color;
+    return BoxSample(spBloomTex5, texcoord, 1.0);
 }
 float3 BloomDownS7(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex6, texcoord, 1.0);
-    return color;
+    return BoxSample(spBloomTex6, texcoord, 1.0);
 }
 float3 BloomDownS8(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex7, texcoord, 1.0);
-    return color;
+    return BoxSample(spBloomTex7, texcoord, 1.0);
 }
 //Upsample
 float3 BloomUpS7(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex8, texcoord, 0.5);
-    return color * 0.25;
+    return BoxSample(spBloomTex8, texcoord, 0.5) * 0.25;
 }
 float3 BloomUpS6(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex7, texcoord, 0.5);
-    return color;
+    return BoxSample(spBloomTex7, texcoord, 0.5);
 }
 float3 BloomUpS5(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex6, texcoord, 0.5);
-    return color;
+    return BoxSample(spBloomTex6, texcoord, 0.5);
 }
 float3 BloomUpS4(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex5, texcoord, 0.5);
-    return color;
+    return BoxSample(spBloomTex5, texcoord, 0.5);
 }
 float3 BloomUpS3(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex4, texcoord, 0.5);
-    return color;
+    return BoxSample(spBloomTex4, texcoord, 0.5);
 }
 float3 BloomUpS2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex3, texcoord, 0.5);
-    return color;
+    return BoxSample(spBloomTex3, texcoord, 0.5);
 }
 float3 BloomUpS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = BoxSample(spBloomTex2, texcoord, 0.5) + tex2D(spBloomTex1, texcoord).rgb;
-    return color;
+    return BoxSample(spBloomTex2, texcoord, 0.5) + tex2D(spBloomTex1, texcoord).rgb;
 }
 float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
@@ -717,7 +733,7 @@ float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 
 float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
-	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
+    static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
     static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 radiant_vector = texcoord.xy - 0.5;
     float2 texcoord_clean = texcoord.xy;
@@ -754,9 +770,9 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
     [branch]
     if (GeoIStrength != 0.0)
     {
-        float2 bump = 0.6666667 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE).xy + 0.33333334 * tex2D(spBumpTex, texcoord * BUMP_MAP_SCALE * 3).xy;
+        float2 bump = 0.6666667 * tex2D(spBumpTex, texcoord * _BUMP_MAP_SCALE).xy + 0.33333334 * tex2D(spBumpTex, texcoord * _BUMP_MAP_SCALE * 3).xy;
     
-	    bump = bump * 2.0 - 1.0;
+        bump = bump * 2.0 - 1.0;
         texcoord += bump * TEXEL_SIZE * (GeoIStrength * GeoIStrength);
     }
     float3 color = tex2D(spLinearTex, texcoord).rgb;
@@ -815,7 +831,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
         static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
 
         float noise_speed = 1;
-	    float noise_coord = texcoord_clean;
+        float noise_coord = texcoord_clean;
         if (NoiseType == 1)
         {
            noise_coord /= PI;
@@ -858,7 +874,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
     //Auto exposure
     if (UseAE)
     {
-        color *= AETarget / tex2D(spStorageTex, 0.5).y;
+        color *= lerp(1.0, AETarget / tex2Dfetch(spStorageTex, 0).y, AEGain);
     }
     
     //DEBUG stuff
@@ -887,7 +903,11 @@ technique Camera <ui_tooltip =
     }
     pass
     {
-        VertexShader = VS_Storage; PixelShader = StoragePass; RenderTarget = pStorageTex;
+        VertexShader = PostProcessVS; PixelShader = StoragePass; RenderTarget = pStorageTex;
+    }
+    pass
+    {
+        VertexShader = PostProcessVS; PixelShader = StoragePassC; RenderTarget = pStorageTexC;
     }
 
 

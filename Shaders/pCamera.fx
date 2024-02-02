@@ -254,6 +254,8 @@ uniform float AETarget < __UNIFORM_SLIDER_FLOAT1
     ui_tooltip = "Exposure target";
 	ui_category = "Auto Exposure";
 > = 0.5;
+static const float AEPx = 0.5;
+static const float AEPy = 0.5;
 
 
 //Performance
@@ -282,11 +284,15 @@ uniform bool UseApproximateTransforms <
     #define _DIRT_MAP_SOURCE "pDirtTex.png"
 #endif
 
-static const int BUFFER_MIP_LEVELS = 1; //calculate log2 of buffer width and height and select lowest one
+#ifndef _STORAGE_TEX_RESOLUTION
+    #define _STORAGE_TEX_RESOLUTION 32
+#endif
 
-texture pStorageTex < pooled = true; > { Width = 1; Height = 1; Format = RG16F; };
+static const int STORAGE_TEX_MIPLEVELS = 3;
+
+texture pStorageTex < pooled = true; > { Width = _STORAGE_TEX_RESOLUTION; Height = _STORAGE_TEX_RESOLUTION; Format = RG16F; MipLevels = STORAGE_TEX_MIPLEVELS; };
 sampler spStorageTex { Texture = pStorageTex; };
-texture pStorageTexC < pooled = true; > { Width = 1; Height = 1; Format = RG16F; };
+texture pStorageTexC < pooled = true; > { Width = _STORAGE_TEX_RESOLUTION; Height = _STORAGE_TEX_RESOLUTION; Format = RG16F; };
 sampler spStorageTexC { Texture = pStorageTexC; };
 
 texture pBumpTex < source = _BUMP_MAP_SOURCE; pooled = true; > { Width = _BUMP_MAP_RESOLUTION; Height = _BUMP_MAP_RESOLUTION; Format = RG8; };
@@ -295,7 +301,7 @@ sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;};
 texture pDirtTex < source = _DIRT_MAP_SOURCE; pooled = true; > { Width = _DIRT_MAP_RESOLUTION; Height = _DIRT_MAP_RESOLUTION; Format = RGBA8; };
 sampler spDirtTex { Texture = pDirtTex; AddressU = REPEAT; AddressV = REPEAT;};
 
-texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; MipLevels = BUFFER_MIP_LEVELS; };
+texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler spLinearTex { Texture = pLinearTex;};
 
 texture pBokehBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
@@ -303,7 +309,7 @@ sampler spBokehBlurTex { Texture = pBokehBlurTex;};
 texture pGaussianBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spGaussianBlurTex { Texture = pGaussianBlurTex;};
 
-texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; }; //LOD STUFF???------------------------------------------------------
+texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spBloomTex0 { Texture = pBloomTex0;};
 texture pBloomTex1 < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
 sampler spBloomTex1 { Texture = pBloomTex1;};
@@ -544,6 +550,20 @@ vs2ps vs_basic(const uint id)
     return o;
 }
 
+vs2ps VS_Storage(uint id : SV_VertexID)
+{
+    vs2ps o = vs_basic(id);
+    if ((UseDOFAF && UseDOF) || UseAE)
+    {
+        o.uv.w = ReShade::GetLinearizedDepth(float2(DOFFocusPx, DOFFocusPy));
+    }
+    else
+    {
+        o.vpos.xy = 0.0;
+    }
+    return o;
+}
+
 vs2ps VS_Blur(uint id : SV_VertexID)
 {
     vs2ps o = vs_basic(id);
@@ -593,25 +613,19 @@ float3 LinearizePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : CO
     return color;
 }
 
-float2 StoragePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float2 StoragePass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : COLOR
 {
-    [branch] //TEST TO SEE IF THIS IMPROVES OR HAMPERS PERFORMANCE
-    if (!((UseDOFAF && UseDOF) || UseAE))
-    {
-        discard;
-    }
-
-    float2 data = tex2Dfetch(spStorageTexC, 0).xy;
+    float2 data = tex2D(spStorageTexC, texcoord).xy;
     //Sample DOF
-    data.x = lerp(data.x, ReShade::GetLinearizedDepth(float2(DOFFocusPx, DOFFocusPy)), min(FrameTime / (DOFFocusSpeed * 1000 + EPSILON), 1.0));
+    data.x = lerp(data.x, texcoord.w, min(FrameTime / (DOFFocusSpeed * 1000 + EPSILON), 1.0));
 
     //Sample AE
-    data.y = lerp(data.y, max(min(2.0 * Oklab::Luma_RGB(tex2Dlod(spLinearTex, float4(0.5, 0.5, 0, BUFFER_MIP_LEVELS - 1)).rgb) / Oklab::HDR_PAPER_WHITE, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
+    data.y = lerp(data.y, max(min(2.0 * Oklab::Luma_RGB(tex2D(spLinearTex, texcoord.xy).rgb) / Oklab::HDR_PAPER_WHITE, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
     return data.xy;
 }
 float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    return tex2Dfetch(spStorageTex, 0).xy;
+    return tex2D(spStorageTex, texcoord).xy;
 }
 
 //Blur
@@ -874,7 +888,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
     //Auto exposure
     if (UseAE)
     {
-        color *= lerp(1.0, AETarget / tex2Dfetch(spStorageTex, 0).y, AEGain);
+        color *= lerp(1.0, AETarget / tex2Dlod(spStorageTex, float4(AEPx, AEPy, 0, STORAGE_TEX_MIPLEVELS - 1)).y, AEGain);
     }
     
     //DEBUG stuff
@@ -903,7 +917,7 @@ technique Camera <ui_tooltip =
     }
     pass
     {
-        VertexShader = PostProcessVS; PixelShader = StoragePass; RenderTarget = pStorageTex;
+        VertexShader = VS_Storage; PixelShader = StoragePass; RenderTarget = pStorageTex;
     }
     pass
     {

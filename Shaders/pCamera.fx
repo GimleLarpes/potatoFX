@@ -287,7 +287,6 @@ uniform bool UseApproximateTransforms <
 #ifndef _STORAGE_TEX_RESOLUTION
     #define _STORAGE_TEX_RESOLUTION 32
 #endif
-
 static const int STORAGE_TEX_MIPLEVELS = 3;
 
 texture pStorageTex < pooled = true; > { Width = _STORAGE_TEX_RESOLUTION; Height = _STORAGE_TEX_RESOLUTION; Format = RG16F; MipLevels = STORAGE_TEX_MIPLEVELS; };
@@ -300,9 +299,6 @@ sampler spBumpTex { Texture = pBumpTex; AddressU = REPEAT; AddressV = REPEAT;};
 
 texture pDirtTex < source = _DIRT_MAP_SOURCE; pooled = true; > { Width = _DIRT_MAP_RESOLUTION; Height = _DIRT_MAP_RESOLUTION; Format = RGBA8; };
 sampler spDirtTex { Texture = pDirtTex; AddressU = REPEAT; AddressV = REPEAT;};
-
-texture pLinearTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
-sampler spLinearTex { Texture = pLinearTex;};
 
 texture pBokehBlurTex < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spBokehBlurTex { Texture = pBokehBlurTex;};
@@ -330,63 +326,124 @@ sampler spBloomTex8 { Texture = pBloomTex8;};
 
 
 //Functions
-float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction)
+float3 SampleLinear(float2 texcoord)
+{
+    float3 color = tex2D(ReShade::BackBuffer, texcoord);
+    color = (UseApproximateTransforms)
+		? Oklab::Fast_DisplayFormat_to_Linear(color)
+		: Oklab::DisplayFormat_to_Linear(color);
+    return color;
+}
+
+float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction, bool sample_linear)
 {
     float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 step_length = TEXEL_SIZE * size;
 
-    float3 color = tex2D(s, texcoord).rgb;
-
     //Weights and offsets, yoinked from GaussianBlur.fx by Ioxa
+    float3 color;
     [branch]
-    if (GaussianQuality == 2) //Low quality
-    {   
-        static const float OFFSET[4] = { 0.0, 2.3648510476, 6.0586244616, 10.0081402754 };
-        static const float WEIGHT[4] = { 0.39894, 0.2959599993, 0.0045656525, 0.00000149278686458842 };
-        
-        color *= WEIGHT[0]; //For some reason these loops have to be in here and not the main function body
-        [loop]
-        for (int i = 1; i < 4; ++i)
-        {
-            color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-            color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+    if (sample_linear)
+    {
+        color = SampleLinear(texcoord);
+        [branch]
+        if (GaussianQuality == 2) //Low quality
+        {   
+            static const float OFFSET[4] = { 0.0, 2.3648510476, 6.0586244616, 10.0081402754 };
+            static const float WEIGHT[4] = { 0.39894, 0.2959599993, 0.0045656525, 0.00000149278686458842 };
+            
+            color *= WEIGHT[0];
+            [loop]
+            for (int i = 1; i < 4; ++i)
+            {
+                color += SampleLinear(texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+                color += SampleLinear(texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+            }
+        }
+        [branch]
+        if (GaussianQuality == 1) //Medium quality
+        {   
+            static const float OFFSET[6] = { 0.0, 2.9168590336, 6.80796961356, 10.7036115602, 14.605881432, 18.516319419 };
+            static const float WEIGHT[6] = { 0.13298, 0.23227575, 0.1353261595, 0.0511557427, 0.01253922, 0.0019913644 };
+            
+            color *= WEIGHT[0];
+            [loop]
+            for (int i = 1; i < 6; ++i)
+            {
+                color += SampleLinear(texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+                color += SampleLinear(texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+            }
+        }
+        [branch]
+        if (GaussianQuality == 0) //High quality
+        {   
+            static const float OFFSET[11] = { 0.0, 2.9791696802, 6.9514271428, 10.9237593482, 14.8962084654, 18.8688159492, 22.841622294, 26.8146668, 30.7879873556, 34.7616202348, 38.7355999168 };
+            static const float WEIGHT[11] = { 0.06649, 0.1284697563, 0.111918249, 0.0873132676, 0.0610011113, 0.0381655709, 0.0213835661, 0.0107290241, 0.0048206869, 0.0019396469, 0.0006988718 };
+            
+            color *= WEIGHT[0];
+            [loop]
+            for (int i = 1; i < 11; ++i)
+            {
+                color += SampleLinear(texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+                color += SampleLinear(texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+            }
         }
     }
-    [branch]
-    if (GaussianQuality == 1) //Medium quality
-    {   
-        static const float OFFSET[6] = { 0.0, 2.9168590336, 6.80796961356, 10.7036115602, 14.605881432, 18.516319419 };
-        static const float WEIGHT[6] = { 0.13298, 0.23227575, 0.1353261595, 0.0511557427, 0.01253922, 0.0019913644 };
-        
-        color *= WEIGHT[0];
-        [loop]
-        for (int i = 1; i < 6; ++i)
-        {
-            color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-            color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+    else
+    {
+        color = tex2D(s, texcoord).rgb;
+        [branch]
+        if (GaussianQuality == 2) //Low quality
+        {   
+            static const float OFFSET[4] = { 0.0, 2.3648510476, 6.0586244616, 10.0081402754 };
+            static const float WEIGHT[4] = { 0.39894, 0.2959599993, 0.0045656525, 0.00000149278686458842 };
+            
+            color *= WEIGHT[0];
+            [loop]
+            for (int i = 1; i < 4; ++i)
+            {
+                color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+                color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+            }
+        }
+        [branch]
+        if (GaussianQuality == 1) //Medium quality
+        {   
+            static const float OFFSET[6] = { 0.0, 2.9168590336, 6.80796961356, 10.7036115602, 14.605881432, 18.516319419 };
+            static const float WEIGHT[6] = { 0.13298, 0.23227575, 0.1353261595, 0.0511557427, 0.01253922, 0.0019913644 };
+            
+            color *= WEIGHT[0];
+            [loop]
+            for (int i = 1; i < 6; ++i)
+            {
+                color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+                color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+            }
+        }
+        [branch]
+        if (GaussianQuality == 0) //High quality
+        {   
+            static const float OFFSET[11] = { 0.0, 2.9791696802, 6.9514271428, 10.9237593482, 14.8962084654, 18.8688159492, 22.841622294, 26.8146668, 30.7879873556, 34.7616202348, 38.7355999168 };
+            static const float WEIGHT[11] = { 0.06649, 0.1284697563, 0.111918249, 0.0873132676, 0.0610011113, 0.0381655709, 0.0213835661, 0.0107290241, 0.0048206869, 0.0019396469, 0.0006988718 };
+            
+            color *= WEIGHT[0];
+            [loop]
+            for (int i = 1; i < 11; ++i)
+            {
+                color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+                color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+            }
         }
     }
-    [branch]
-    if (GaussianQuality == 0) //High quality
-    {   
-        static const float OFFSET[11] = { 0.0, 2.9791696802, 6.9514271428, 10.9237593482, 14.8962084654, 18.8688159492, 22.841622294, 26.8146668, 30.7879873556, 34.7616202348, 38.7355999168 };
-        static const float WEIGHT[11] = { 0.06649, 0.1284697563, 0.111918249, 0.0873132676, 0.0610011113, 0.0381655709, 0.0213835661, 0.0107290241, 0.0048206869, 0.0019396469, 0.0006988718 };
-        
-        color *= WEIGHT[0];
-        [loop]
-        for (int i = 1; i < 11; ++i)
-        {
-            color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-            color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-        }
-    }
+
     return color;
 }
 
-float3 BokehBlur(sampler s, float2 texcoord, float size)
+float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
 {
     float brightness_compensation;
     float size_compensation;
+    int samples;
 
     switch (BokehQuality)
     {
@@ -394,16 +451,19 @@ float3 BokehBlur(sampler s, float2 texcoord, float size)
         {
             brightness_compensation = 0.010989010989;
             size_compensation = 1.0;
+            samples = 90;
         } break;
         case 1:
         {
             brightness_compensation = 0.027027027027;
             size_compensation = 1.666666666667;
+            samples = 36;
         } break;
         case 2:
         {
             brightness_compensation = 0.0769230769231;
             size_compensation = 2.5;
+            samples = 12;
         } break;
     }
     
@@ -414,111 +474,29 @@ float3 BokehBlur(sampler s, float2 texcoord, float size)
     float2 variance = FrameCount * float2(sin(2000 * PI * texcoord.x), cos(2000 * PI * texcoord.y)) * 1000.0;
     variance %= MAX_VARIANCE;
     variance = 1 + variance - MAX_VARIANCE / 2.0;
-    
 
-    //Sample points (91 points, 5 rings)
-    //Fast (low quality, 13 points, 2 rings)
-    float3 color = tex2D(s, texcoord).rgb;
-    color += tex2D(s, texcoord + step_length * float2(0, 4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(3.4641, 2) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(3.4641, -2) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(0, -4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-3.4641, -2) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-3.4641, 2) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(0, 8) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(6.9282, 4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(6.9282, -4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(0, -8) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-6.9282, -4) * variance).rgb;
-    color += tex2D(s, texcoord + step_length * float2(-6.9282, 4) * variance).rgb;
+    //Fast (low quality, 13 points, 2 rings) - Medium quality (37 points, 3 rings) - High quality (91 points, 5 rings)
+    static const float2 OFFSET[90] = { float2(0, 4), float2(3.4641, 2), float2(3.4641, -2), float2(0, -4), float2(-3.4641, -2), float2(-3.4641, 2), float2(0, 8), float2(6.9282, 4), float2(6.9282, -4), float2(0, -8), float2(-6.9282, -4), float2(-6.9282, 4), float2(4, 6.9282), float2(8, 0), float2(4, -6.9282), float2(-4, -6.9282), float2(-8, 0), float2(-4, 6.9282), float2(0, 12), float2(4.1042, 11.2763), float2(7.7135, 9.1925), float2(10.3923, 6), float2(11.8177, 2.0838), float2(11.8177, -2.0838), float2(10.3923, -6), float2(7.7135, -9.1925), float2(4.1042, -11.2763), float2(0, -12), float2(-4.1042, -11.2763), float2(-7.7135, -9.1925), float2(-10.3923, -6), float2(-11.8177, -2.0838), float2(-11.8177, 2.0838), float2(-10.3923, 6), float2(-7.7135, 9.1925), float2(-4.1042, 11.2763), float2(0, 16), float2(4.1411, 15.4548), float2(8, 13.8564), float2(11.3137, 11.3137), float2(13.8564, 8), float2(15.4548, 4.1411), float2(16, 0), float2(15.4548, -4.1411), float2(13.8564, -8), float2(11.3137, -11.3137), float2(8, -13.8564), float2(4.1411, -15.4548), float2(0, -16), float2(-4.1411, -15.4548), float2(-8, -13.8564), float2(-11.3137, -11.3137), float2(-13.8564, -8), float2(-15.4548, -4.1411), float2(-16, 0), float2(-15.4548, 4.1411), float2(-13.8564, 8), float2(-11.3137, 11.3137), float2(-8, 13.8564), float2(-4.1411, 15.4548), float2(0, 20), float2(4.1582, 19.563), float2(8.1347, 18.2709), float2(11.7557, 16.1803), float2(14.8629, 13.3826), float2(17.3205, 10), float2(19.0211, 6.1803), float2(19.8904, 2.0906), float2(19.8904, -2.0906), float2(19.0211, -6.1803), float2(17.3205, -10), float2(14.8629, -13.3826), float2(11.7557, -16.1803), float2(8.1347, -18.2709), float2(4.1582, -19.563), float2(0, -20), float2(-4.1582, -19.563), float2(-8.1347, -18.2709), float2(-11.7557, -16.1803), float2(-14.8629, -13.3826), float2(-17.3205, -10), float2(-19.0211, -6.1803), float2(-19.8904, -2.0906), float2(-19.8904, 2.0906), float2(-19.0211, 6.1803), float2(-17.3205, 10), float2(-14.8629, 13.3826), float2(-11.7557, 16.1803), float2(-8.1347, 18.2709), float2(-4.1582, 19.563) };
 
+    float3 color;
     [branch]
-    if (BokehQuality == 0) //High quality (5 rings)
+    if (sample_linear)
     {
-        color += tex2D(s, texcoord + step_length * float2(0, 16) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(4.1411, 15.4548) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(8, 13.8564) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(11.3137, 11.3137) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(13.8564, 8) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(15.4548, 4.1411) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(16, 0) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(15.4548, -4.1411) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(13.8564, -8) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(11.3137, -11.3137) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(8, -13.8564) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(4.1411, -15.4548) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(0, -16) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-4.1411, -15.4548) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-8, -13.8564) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-11.3137, -11.3137) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-13.8564, -8) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-15.4548, -4.1411) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-16, 0) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-15.4548, 4.1411) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-13.8564, 8) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-11.3137, 11.3137) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-8, 13.8564) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-4.1411, 15.4548) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(0, 20) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(4.1582, 19.563) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(8.1347, 18.2709) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(11.7557, 16.1803) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(14.8629, 13.3826) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(17.3205, 10) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(19.0211, 6.1803) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(19.8904, 2.0906) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(19.8904, -2.0906) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(19.0211, -6.1803) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(17.3205, -10) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(14.8629, -13.3826) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(11.7557, -16.1803) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(8.1347, -18.2709) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(4.1582, -19.563) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(0, -20) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-4.1582, -19.563) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-8.1347, -18.2709) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-11.7557, -16.1803) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-14.8629, -13.3826) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-17.3205, -10) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-19.0211, -6.1803) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-19.8904, -2.0906) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-19.8904, 2.0906) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-19.0211, 6.1803) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-17.3205, 10) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-14.8629, 13.3826) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-11.7557, 16.1803) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-8.1347, 18.2709) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-4.1582, 19.563) * variance).rgb;
+        color = SampleLinear(texcoord).rgb;
+        [loop]
+        for (int i = 1; i < samples; ++i)
+        {
+            color += SampleLinear(texcoord + step_length * OFFSET[i] * variance);
+        }
     }
-    [branch]
-    if (BokehQuality < 2) //Medium quality (37 points, 3 rings)
+    else
     {
-        //Second ring
-        color += tex2D(s, texcoord + step_length * float2(4, 6.9282) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(8, 0) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(4, -6.9282) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-4, -6.9282) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-8, 0) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-4, 6.9282) * variance).rgb;
-        //Third ring
-        color += tex2D(s, texcoord + step_length * float2(0, 12) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(4.1042, 11.2763) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(7.7135, 9.1925) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(10.3923, 6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(11.8177, 2.0838) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(11.8177, -2.0838) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(10.3923, -6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(7.7135, -9.1925) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(4.1042, -11.2763) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(0, -12) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-4.1042, -11.2763) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-7.7135, -9.1925) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-10.3923, -6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-11.8177, -2.0838) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-11.8177, 2.0838) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-10.3923, 6) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-7.7135, 9.1925) * variance).rgb;
-        color += tex2D(s, texcoord + step_length * float2(-4.1042, 11.2763) * variance).rgb;
+        color = tex2D(s, texcoord).rgb;
+        [loop]
+        for (int i = 1; i < samples; ++i)
+        {
+            color += tex2D(s, texcoord + step_length * OFFSET[i] * variance).rgb;
+        }
     }
 
     return color * brightness_compensation;
@@ -579,8 +557,8 @@ vs2ps VS_DOF(uint id : SV_VertexID)
     vs2ps o = vs_basic(id);
     if (UseDOF)
     {
-        float depth = 1;//tex2Dfetch(spStorageTex, 0).x; //Why doesn't this work? - "Cannot map to vs_5_0 instruction set", but reshade get linearized depth works
-        //(UseDOFAF) ? tex2Dfetch(spStorageTex, 0).x : DOFManualFocusDist; //sample af depth fromaf texture, af texture samples from af texture and depthtex
+        float depth = 1;//tex2Dfetch(spStorageTex, 0, 0).x; //Why doesn't this work? - "Cannot map to vs_5_0 instruction set", but reshade get linearized depth works
+        //(UseDOFAF) ? tex2Dfetch(spStorageTex, 0, 0).x : DOFManualFocusDist; //sample af depth fromaf texture, af texture samples from af texture and depthtex
         float scale = ((float(DOFFocalLength*DOFFocalLength) / 10000) * DOF_SENSOR_SIZE / 18) / ((1 + depth*depth) * DOFAperture) * length(float2(BUFFER_WIDTH, BUFFER_HEIGHT))/2048;
         o.uv.z = depth;
         o.uv.w = scale;
@@ -604,15 +582,6 @@ vs2ps VS_Bloom(uint id : SV_VertexID)
 
 
 ////Passes
-float3 LinearizePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
-{
-    float3 color = tex2D(ReShade::BackBuffer, texcoord);
-    color = (UseApproximateTransforms)
-		? Oklab::Fast_DisplayFormat_to_Linear(color)
-		: Oklab::DisplayFormat_to_Linear(color);
-    return color;
-}
-
 float2 StoragePass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : COLOR
 {
     float2 data = tex2D(spStorageTexC, texcoord).xy;
@@ -620,7 +589,7 @@ float2 StoragePass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : COLO
     data.x = lerp(data.x, texcoord.w, min(FrameTime / (DOFFocusSpeed * 1000 + EPSILON), 1.0));
 
     //Sample AE
-    data.y = lerp(data.y, max(min(2.0 * Oklab::Luma_RGB(tex2D(spLinearTex, texcoord.xy).rgb) / Oklab::HDR_PAPER_WHITE, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
+    data.y = lerp(data.y, max(Oklab::Adapted_Luma_RGB(SampleLinear(texcoord.xy).rgb, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
     return data.xy;
 }
 float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
@@ -631,11 +600,11 @@ float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COL
 //Blur
 float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    return GaussianBlur(spLinearTex, texcoord, BlurStrength, float2(1.0, 0.0));
+    return GaussianBlur(spBumpTex, texcoord, BlurStrength, float2(1.0, 0.0), true);
 }
 float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    return GaussianBlur(spBokehBlurTex, texcoord, BlurStrength, float2(0.0, 1.0));
+    return GaussianBlur(spBokehBlurTex, texcoord, BlurStrength, float2(0.0, 1.0), false);
 }
 
 //DOF
@@ -643,7 +612,7 @@ float4 BokehBlurPass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : CO
 {
     float size = abs(ReShade::GetLinearizedDepth(texcoord.xy) - texcoord.z) * texcoord.w;
     float4 color;
-    color.rgb = (BlurStrength != 0.0) ? BokehBlur(spGaussianBlurTex, texcoord.xy, size) : BokehBlur(spLinearTex, texcoord.xy, size);
+    color.rgb = (BlurStrength != 0.0) ? BokehBlur(spGaussianBlurTex, texcoord.xy, size, false) : BokehBlur(spBumpTex, texcoord.xy, size, true);
     color.a = size;
     
     return color;
@@ -652,10 +621,8 @@ float4 BokehBlurPass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : CO
 //Bloom, based on: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
 float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = (UseDOF) ? tex2D(spBokehBlurTex, texcoord).rgb : (BlurStrength == 0.0) ? tex2D(spLinearTex, texcoord).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
-
-    static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
-    float adapted_luma = min(2.0 * Oklab::Luma_RGB(color) / PAPER_WHITE, 1.0);
+    float3 color = (UseDOF) ? tex2D(spBokehBlurTex, texcoord).rgb : (BlurStrength == 0.0) ? SampleLinear(texcoord).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
+    float adapted_luma = Oklab::Adapted_Luma_RGB(color, 1.0);
 
     if (!Oklab::IS_HDR)
     {
@@ -789,7 +756,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
         bump = bump * 2.0 - 1.0;
         texcoord += bump * TEXEL_SIZE * (GeoIStrength * GeoIStrength);
     }
-    float3 color = tex2D(spLinearTex, texcoord).rgb;
+    float3 color = SampleLinear(texcoord).rgb;
     
     //Blur
     float blur_mix = min((4 - GaussianQuality) * BlurStrength, 1.0);
@@ -813,8 +780,8 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
         float3 influence = float3(-0.04, 0.0, 0.03);
 
         float2 step_length = CAStrength * radiant_vector;
-        color.r = (UseDOF) ? tex2D(spBokehBlurTex, texcoord + step_length * influence.r).r : lerp(tex2D(spLinearTex, texcoord + step_length * influence.r).r, tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).r, blur_mix);
-        color.b = (UseDOF) ? tex2D(spBokehBlurTex, texcoord + step_length * influence.b).b : lerp(tex2D(spLinearTex, texcoord + step_length * influence.b).b, tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).b, blur_mix);
+        color.r = (UseDOF) ? tex2D(spBokehBlurTex, texcoord + step_length * influence.r).r : lerp(SampleLinear(texcoord + step_length * influence.r).r, tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).r, blur_mix);
+        color.b = (UseDOF) ? tex2D(spBokehBlurTex, texcoord + step_length * influence.b).b : lerp(SampleLinear(texcoord + step_length * influence.b).b, tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).b, blur_mix);
     }
 
     //Dirt
@@ -911,10 +878,6 @@ technique Camera <ui_tooltip =
 "A high performance all-in-one shader with many common camera and lens effects.\n\n"
 "(HDR compatible)";>
 {
-    pass
-    {
-        VertexShader = PostProcessVS; PixelShader = LinearizePass; RenderTarget = pLinearTex;
-    }
     pass
     {
         VertexShader = VS_Storage; PixelShader = StoragePass; RenderTarget = pStorageTex;

@@ -334,6 +334,25 @@ float3 SampleLinear(float2 texcoord)
 		: Oklab::DisplayFormat_to_Linear(color);
     return color;
 }
+float3 SampleLinear(float2 texcoord, bool use_lottes)
+{
+    float3 color = tex2D(ReShade::BackBuffer, texcoord);
+    color = (UseApproximateTransforms)
+		? Oklab::Fast_DisplayFormat_to_Linear(color)
+		: Oklab::DisplayFormat_to_Linear(color);
+
+    if (use_lottes && !Oklab::IS_HDR)
+    {
+        color = Oklab::LottesInv(color);
+    }
+    
+    return color;
+}
+
+float3 UndoLottesInv(float3 c)
+{
+    return (Oklab::IS_HDR) ? c : Oklab::Lottes(c);
+}
 
 float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction, bool sample_linear)
 {
@@ -372,12 +391,12 @@ float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction, bo
     [branch]
     if (sample_linear)
     {
-        color = SampleLinear(texcoord) * WEIGHT[start];
+        color = SampleLinear(texcoord, true) * WEIGHT[start];
         [loop]
         for (int i = start + 1; i < end; ++i)
         {
-            color += SampleLinear(texcoord + direction * OFFSET[i] * step_length) * WEIGHT[i];
-            color += SampleLinear(texcoord - direction * OFFSET[i] * step_length) * WEIGHT[i];
+            color += SampleLinear(texcoord + direction * OFFSET[i] * step_length, true) * WEIGHT[i];
+            color += SampleLinear(texcoord - direction * OFFSET[i] * step_length, true) * WEIGHT[i];
         }
     }
     else
@@ -436,11 +455,11 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
     [branch]
     if (sample_linear)
     {
-        color = SampleLinear(texcoord).rgb;
+        color = SampleLinear(texcoord, true).rgb;
         [loop]
         for (int i = 1; i < samples; ++i)
         {
-            color += SampleLinear(texcoord + step_length * OFFSET[i] * variance);
+            color += SampleLinear(texcoord + step_length * OFFSET[i] * variance, true);
         }
     }
     else
@@ -511,7 +530,7 @@ vs2ps VS_DOF(uint id : SV_VertexID)
     vs2ps o = vs_basic(id);
     if (UseDOF)
     {
-        float depth = 1;//tex2Dfetch(spStorageTex, 0, 0).x; //Why doesn't this work? - "Cannot map to vs_5_0 instruction set", but reshade get linearized depth works
+        float depth = DOFManualFocusDist;//tex2Dfetch(spStorageTex, 0, 0).x; //Why doesn't this work? - "Cannot map to vs_5_0 instruction set", but reshade get linearized depth works
         //(UseDOFAF) ? tex2Dfetch(spStorageTex, 0, 0).x : DOFManualFocusDist; //sample af depth fromaf texture, af texture samples from af texture and depthtex
         float scale = ((float(DOFFocalLength*DOFFocalLength) / 10000) * DOF_SENSOR_SIZE / 18) / ((1 + depth*depth) * DOFAperture) * length(float2(BUFFER_WIDTH, BUFFER_HEIGHT))/2048;
         o.uv.z = depth;
@@ -575,15 +594,12 @@ float4 BokehBlurPass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : CO
 //Bloom, based on: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
 float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
-    float3 color = (UseDOF) ? tex2D(spBokehBlurTex, texcoord).rgb : (BlurStrength == 0.0) ? SampleLinear(texcoord).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
-    float adapted_luma = Oklab::Adapted_Luma_RGB(color, 1.0);
+    float3 color = (UseDOF) ? tex2D(spBokehBlurTex, texcoord).rgb : (BlurStrength == 0.0) ? SampleLinear(texcoord, true).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
+    float adapted_luma = (Oklab::IS_HDR)
+        ? Oklab::Adapted_Luma_RGB(color, 1.0)
+        : Oklab::Adapted_Luma_RGB(Oklab::Lottes(color), 1.0);
 
-    if (!Oklab::IS_HDR)
-    {
-        color = Oklab::LottesInv(color);
-    }
-
-    color *= pow(abs(adapted_luma), BloomCurve * BloomCurve);
+    color *= pow(abs(adapted_luma), BloomCurve*BloomCurve);
     return color;
 }
 //Downsample
@@ -716,7 +732,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
     float blur_mix = min((4 - GaussianQuality) * BlurStrength, 1.0);
     if (BlurStrength != 0.0)
     {
-        color = lerp(color, tex2D(spGaussianBlurTex, texcoord).rgb, blur_mix);
+        color = lerp(color, UndoLottesInv(tex2D(spGaussianBlurTex, texcoord).rgb), blur_mix);
     }
 
     //DOF
@@ -724,7 +740,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
     {
         float4 dof_data = tex2D(spBokehBlurTex, texcoord);
         float dof_mix = min(10 * dof_data.a, 1.0);
-        color = lerp(color, dof_data.rgb, dof_mix);
+        color = lerp(color, UndoLottesInv(dof_data.rgb), dof_mix);
     }
 
     //Chromatic aberration

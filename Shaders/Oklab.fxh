@@ -255,7 +255,7 @@ namespace Oklab
     float3 LottesInv(float3 c)
     {   
         c /= (1.0 - Luma_RGB(c));
-        return min(c, 10.0); //No idea what is good value
+        return min(c, 100.0);
     }
 
     //Transformations

@@ -340,99 +340,54 @@ float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction, bo
     float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 step_length = TEXEL_SIZE * size;
 
-    //Weights and offsets, yoinked from GaussianBlur.fx by Ioxa
+    int start;
+    int end;
+    switch (GaussianQuality)
+    {
+        case 0: //High quality 31 samples
+        {
+            start = 12;
+            end = 28;
+        } break;
+        case 1: //Medium quality 15 samples
+        {
+            start = 4;
+            end = 12;
+        } break;
+        case 2: //Fast 7 samples
+        {
+            start = 0;
+            end = 4;
+        } break;
+    }
+
+    static const float OFFSET[28] = { 0.0, 1.4118, 3.2941, 5.1765, 
+                                      0.0, 1.4754, 3.4426, 5.4098, 7.3770, 9.3443, 11.3115, 13.2787, 
+                                      0.0, 1.4953, 3.4890, 5.4826, 7.4763, 9.4700, 11.4637, 13.4574, 15.4511, 17.4448, 19.4385, 21.4322, 23.4259, 25.4196, 27.4132, 29.4069 };
+    static const float WEIGHT[28] = { 0.1965, 0.2969, 0.0945, 0.0104, 
+                                      0.1026, 0.1893, 0.1370, 0.0763, 0.0326, 0.0106, 0.0026, 0.0005, 
+                                      0.0449, 0.0883, 0.0830, 0.0741, 0.0629, 0.0508, 0.0390, 0.0284, 0.0197, 0.0130, 0.0081, 0.0049, 0.0027, 0.0015, 0.0008, 0.0004 };
+    
     float3 color;
     [branch]
     if (sample_linear)
     {
-        color = SampleLinear(texcoord);
-        [branch]
-        if (GaussianQuality == 2) //Low quality
-        {   
-            static const float OFFSET[4] = { 0.0, 2.3648510476, 6.0586244616, 10.0081402754 };
-            static const float WEIGHT[4] = { 0.39894, 0.2959599993, 0.0045656525, 0.00000149278686458842 };
-            
-            color *= WEIGHT[0];
-            [loop]
-            for (int i = 1; i < 4; ++i)
-            {
-                color += SampleLinear(texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-                color += SampleLinear(texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-            }
-        }
-        [branch]
-        if (GaussianQuality == 1) //Medium quality
-        {   
-            static const float OFFSET[6] = { 0.0, 2.9168590336, 6.80796961356, 10.7036115602, 14.605881432, 18.516319419 };
-            static const float WEIGHT[6] = { 0.13298, 0.23227575, 0.1353261595, 0.0511557427, 0.01253922, 0.0019913644 };
-            
-            color *= WEIGHT[0];
-            [loop]
-            for (int i = 1; i < 6; ++i)
-            {
-                color += SampleLinear(texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-                color += SampleLinear(texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-            }
-        }
-        [branch]
-        if (GaussianQuality == 0) //High quality
-        {   
-            static const float OFFSET[11] = { 0.0, 2.9791696802, 6.9514271428, 10.9237593482, 14.8962084654, 18.8688159492, 22.841622294, 26.8146668, 30.7879873556, 34.7616202348, 38.7355999168 };
-            static const float WEIGHT[11] = { 0.06649, 0.1284697563, 0.111918249, 0.0873132676, 0.0610011113, 0.0381655709, 0.0213835661, 0.0107290241, 0.0048206869, 0.0019396469, 0.0006988718 };
-            
-            color *= WEIGHT[0];
-            [loop]
-            for (int i = 1; i < 11; ++i)
-            {
-                color += SampleLinear(texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-                color += SampleLinear(texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-            }
+        color = SampleLinear(texcoord) * WEIGHT[start];
+        [loop]
+        for (int i = start + 1; i < end; ++i)
+        {
+            color += SampleLinear(texcoord + direction * OFFSET[i] * step_length) * WEIGHT[i];
+            color += SampleLinear(texcoord - direction * OFFSET[i] * step_length) * WEIGHT[i];
         }
     }
     else
     {
-        color = tex2D(s, texcoord).rgb;
-        [branch]
-        if (GaussianQuality == 2) //Low quality
-        {   
-            static const float OFFSET[4] = { 0.0, 2.3648510476, 6.0586244616, 10.0081402754 };
-            static const float WEIGHT[4] = { 0.39894, 0.2959599993, 0.0045656525, 0.00000149278686458842 };
-            
-            color *= WEIGHT[0];
-            [loop]
-            for (int i = 1; i < 4; ++i)
-            {
-                color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-                color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-            }
-        }
-        [branch]
-        if (GaussianQuality == 1) //Medium quality
-        {   
-            static const float OFFSET[6] = { 0.0, 2.9168590336, 6.80796961356, 10.7036115602, 14.605881432, 18.516319419 };
-            static const float WEIGHT[6] = { 0.13298, 0.23227575, 0.1353261595, 0.0511557427, 0.01253922, 0.0019913644 };
-            
-            color *= WEIGHT[0];
-            [loop]
-            for (int i = 1; i < 6; ++i)
-            {
-                color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-                color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-            }
-        }
-        [branch]
-        if (GaussianQuality == 0) //High quality
-        {   
-            static const float OFFSET[11] = { 0.0, 2.9791696802, 6.9514271428, 10.9237593482, 14.8962084654, 18.8688159492, 22.841622294, 26.8146668, 30.7879873556, 34.7616202348, 38.7355999168 };
-            static const float WEIGHT[11] = { 0.06649, 0.1284697563, 0.111918249, 0.0873132676, 0.0610011113, 0.0381655709, 0.0213835661, 0.0107290241, 0.0048206869, 0.0019396469, 0.0006988718 };
-            
-            color *= WEIGHT[0];
-            [loop]
-            for (int i = 1; i < 11; ++i)
-            {
-                color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-                color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
-            }
+        color = tex2D(s, texcoord).rgb * WEIGHT[start];
+        [loop]
+        for (int i = start + 1; i < end; ++i)
+        {
+            color += tex2D(s, texcoord + direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
+            color += tex2D(s, texcoord - direction * OFFSET[i] * step_length).rgb * WEIGHT[i];
         }
     }
 
@@ -447,25 +402,27 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
 
     switch (BokehQuality)
     {
-        case 0:
+        case 0: //High quality (91 points, 5 rings)
         {
             brightness_compensation = 0.010989010989;
             size_compensation = 1.0;
             samples = 90;
         } break;
-        case 1:
+        case 1: //Medium quality (37 points, 3 rings)
         {
             brightness_compensation = 0.027027027027;
             size_compensation = 1.666666666667;
             samples = 36;
         } break;
-        case 2:
+        case 2: //Fast (low quality, 13 points, 2 rings)
         {
             brightness_compensation = 0.0769230769231;
             size_compensation = 2.5;
             samples = 12;
         } break;
     }
+
+    static const float2 OFFSET[90] = { float2(0, 4), float2(3.4641, 2), float2(3.4641, -2), float2(0, -4), float2(-3.4641, -2), float2(-3.4641, 2), float2(0, 8), float2(6.9282, 4), float2(6.9282, -4), float2(0, -8), float2(-6.9282, -4), float2(-6.9282, 4), float2(4, 6.9282), float2(8, 0), float2(4, -6.9282), float2(-4, -6.9282), float2(-8, 0), float2(-4, 6.9282), float2(0, 12), float2(4.1042, 11.2763), float2(7.7135, 9.1925), float2(10.3923, 6), float2(11.8177, 2.0838), float2(11.8177, -2.0838), float2(10.3923, -6), float2(7.7135, -9.1925), float2(4.1042, -11.2763), float2(0, -12), float2(-4.1042, -11.2763), float2(-7.7135, -9.1925), float2(-10.3923, -6), float2(-11.8177, -2.0838), float2(-11.8177, 2.0838), float2(-10.3923, 6), float2(-7.7135, 9.1925), float2(-4.1042, 11.2763), float2(0, 16), float2(4.1411, 15.4548), float2(8, 13.8564), float2(11.3137, 11.3137), float2(13.8564, 8), float2(15.4548, 4.1411), float2(16, 0), float2(15.4548, -4.1411), float2(13.8564, -8), float2(11.3137, -11.3137), float2(8, -13.8564), float2(4.1411, -15.4548), float2(0, -16), float2(-4.1411, -15.4548), float2(-8, -13.8564), float2(-11.3137, -11.3137), float2(-13.8564, -8), float2(-15.4548, -4.1411), float2(-16, 0), float2(-15.4548, 4.1411), float2(-13.8564, 8), float2(-11.3137, 11.3137), float2(-8, 13.8564), float2(-4.1411, 15.4548), float2(0, 20), float2(4.1582, 19.563), float2(8.1347, 18.2709), float2(11.7557, 16.1803), float2(14.8629, 13.3826), float2(17.3205, 10), float2(19.0211, 6.1803), float2(19.8904, 2.0906), float2(19.8904, -2.0906), float2(19.0211, -6.1803), float2(17.3205, -10), float2(14.8629, -13.3826), float2(11.7557, -16.1803), float2(8.1347, -18.2709), float2(4.1582, -19.563), float2(0, -20), float2(-4.1582, -19.563), float2(-8.1347, -18.2709), float2(-11.7557, -16.1803), float2(-14.8629, -13.3826), float2(-17.3205, -10), float2(-19.0211, -6.1803), float2(-19.8904, -2.0906), float2(-19.8904, 2.0906), float2(-19.0211, 6.1803), float2(-17.3205, 10), float2(-14.8629, 13.3826), float2(-11.7557, 16.1803), float2(-8.1347, 18.2709), float2(-4.1582, 19.563) };
     
     float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 step_length = TEXEL_SIZE * size * size_compensation;
@@ -474,9 +431,6 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
     float2 variance = FrameCount * float2(sin(2000 * PI * texcoord.x), cos(2000 * PI * texcoord.y)) * 1000.0;
     variance %= MAX_VARIANCE;
     variance = 1 + variance - MAX_VARIANCE / 2.0;
-
-    //Fast (low quality, 13 points, 2 rings) - Medium quality (37 points, 3 rings) - High quality (91 points, 5 rings)
-    static const float2 OFFSET[90] = { float2(0, 4), float2(3.4641, 2), float2(3.4641, -2), float2(0, -4), float2(-3.4641, -2), float2(-3.4641, 2), float2(0, 8), float2(6.9282, 4), float2(6.9282, -4), float2(0, -8), float2(-6.9282, -4), float2(-6.9282, 4), float2(4, 6.9282), float2(8, 0), float2(4, -6.9282), float2(-4, -6.9282), float2(-8, 0), float2(-4, 6.9282), float2(0, 12), float2(4.1042, 11.2763), float2(7.7135, 9.1925), float2(10.3923, 6), float2(11.8177, 2.0838), float2(11.8177, -2.0838), float2(10.3923, -6), float2(7.7135, -9.1925), float2(4.1042, -11.2763), float2(0, -12), float2(-4.1042, -11.2763), float2(-7.7135, -9.1925), float2(-10.3923, -6), float2(-11.8177, -2.0838), float2(-11.8177, 2.0838), float2(-10.3923, 6), float2(-7.7135, 9.1925), float2(-4.1042, 11.2763), float2(0, 16), float2(4.1411, 15.4548), float2(8, 13.8564), float2(11.3137, 11.3137), float2(13.8564, 8), float2(15.4548, 4.1411), float2(16, 0), float2(15.4548, -4.1411), float2(13.8564, -8), float2(11.3137, -11.3137), float2(8, -13.8564), float2(4.1411, -15.4548), float2(0, -16), float2(-4.1411, -15.4548), float2(-8, -13.8564), float2(-11.3137, -11.3137), float2(-13.8564, -8), float2(-15.4548, -4.1411), float2(-16, 0), float2(-15.4548, 4.1411), float2(-13.8564, 8), float2(-11.3137, 11.3137), float2(-8, 13.8564), float2(-4.1411, 15.4548), float2(0, 20), float2(4.1582, 19.563), float2(8.1347, 18.2709), float2(11.7557, 16.1803), float2(14.8629, 13.3826), float2(17.3205, 10), float2(19.0211, 6.1803), float2(19.8904, 2.0906), float2(19.8904, -2.0906), float2(19.0211, -6.1803), float2(17.3205, -10), float2(14.8629, -13.3826), float2(11.7557, -16.1803), float2(8.1347, -18.2709), float2(4.1582, -19.563), float2(0, -20), float2(-4.1582, -19.563), float2(-8.1347, -18.2709), float2(-11.7557, -16.1803), float2(-14.8629, -13.3826), float2(-17.3205, -10), float2(-19.0211, -6.1803), float2(-19.8904, -2.0906), float2(-19.8904, 2.0906), float2(-19.0211, 6.1803), float2(-17.3205, 10), float2(-14.8629, 13.3826), float2(-11.7557, 16.1803), float2(-8.1347, 18.2709), float2(-4.1582, 19.563) };
 
     float3 color;
     [branch]

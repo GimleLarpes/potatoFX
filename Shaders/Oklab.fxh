@@ -222,14 +222,6 @@ namespace Oklab
     {
         return length(c.yz);
     }
-    float3 Saturate_RGB(float3 c)
-    {
-        return float3(clamp(c.r, 0.0, INVNORM_FACTOR), clamp(c.g, 0.0, INVNORM_FACTOR), clamp(c.b, 0.0, INVNORM_FACTOR));
-    }
-    float Luma_RGB(float3 c)
-    {
-        return dot(c, float3(0.2126, 0.7152, 0.0722));
-    }
 
     //Utility functions for HDR
     float Normalize(float v)
@@ -239,6 +231,18 @@ namespace Oklab
     float3 Normalize(float3 v)
     {   
         return v / INVNORM_FACTOR;
+    }
+    float3 Saturate_RGB(float3 c)
+    {
+        return float3(clamp(c.r, 0.0, INVNORM_FACTOR), clamp(c.g, 0.0, INVNORM_FACTOR), clamp(c.b, 0.0, INVNORM_FACTOR));
+    }
+    float Luma_RGB(float3 c)
+    {
+        return dot(c, float3(0.2126, 0.7152, 0.0722));
+    }
+    float Adapted_Luma_RGB(float3 c, float range)
+    {
+        return min(2.0 * Luma_RGB(c) / HDR_PAPER_WHITE, range);
     }
 
 

@@ -376,7 +376,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
-	float luma = Oklab::Luma_RGB(color);
+	float adapted_luma = Oklab::Adapted_Luma_RGB(color, 1.0);
 	color = Oklab::RGB_to_Oklab(color);
 
 	
@@ -389,8 +389,6 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 			? color.b + WBTemperature + WBTint
 			: color.b + WBTemperature;
 	}
-	static const float PAPER_WHITE = Oklab::HDR_PAPER_WHITE;
-	float adapted_luma = min(2.0 * luma / PAPER_WHITE, 1.0);
 
 
 	//Global adjustments

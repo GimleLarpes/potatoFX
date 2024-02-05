@@ -749,8 +749,8 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
         float3 influence = float3(-0.04, 0.0, 0.03);
 
         float2 step_length = CAStrength * radiant_vector;
-        color.r = (UseDOF) ? tex2D(spBokehBlurTex, texcoord + step_length * influence.r).r : lerp(SampleLinear(texcoord + step_length * influence.r).r, tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).r, blur_mix);
-        color.b = (UseDOF) ? tex2D(spBokehBlurTex, texcoord + step_length * influence.b).b : lerp(SampleLinear(texcoord + step_length * influence.b).b, tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).b, blur_mix);
+        color.r = (UseDOF) ? UndoLottesInv(tex2D(spBokehBlurTex, texcoord + step_length * influence.r).rgb).r : lerp(SampleLinear(texcoord + step_length * influence.r).r, UndoLottesInv(tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).rgb).r, blur_mix);
+        color.b = (UseDOF) ? UndoLottesInv(tex2D(spBokehBlurTex, texcoord + step_length * influence.b).rgb).b : lerp(SampleLinear(texcoord + step_length * influence.b).b, UndoLottesInv(tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).rgb).b, blur_mix);
     }
 
     //Dirt

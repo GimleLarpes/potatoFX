@@ -39,7 +39,7 @@ namespace Oklab
     static const float HDR_PAPER_WHITE = HDR_PAPER_WHITE_NITS / SDR_WHITEPOINT;
 
     #ifndef _HDR_TONEMAP
-        #define _HDR_TONEMAP 5.0
+        #define _HDR_TONEMAP 3.0
     #endif
 
     

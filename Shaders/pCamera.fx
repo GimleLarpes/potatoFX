@@ -457,7 +457,7 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
     {
         color = SampleLinear(texcoord, true);
         [loop]
-        for (int i = 1; i < samples; ++i)
+        for (int i = 0; i < samples; ++i)
         {
             color += SampleLinear(texcoord + step_length * OFFSET[i] * variance, true);
         }
@@ -466,7 +466,7 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
     {
         color = tex2D(s, texcoord).rgb;
         [loop]
-        for (int i = 1; i < samples; ++i)
+        for (int i = 0; i < samples; ++i)
         {
             color += tex2D(s, texcoord + step_length * OFFSET[i] * variance).rgb;
         }

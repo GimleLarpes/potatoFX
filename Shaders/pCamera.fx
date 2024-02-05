@@ -673,8 +673,6 @@ float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
     return color;
 }
 
-
-
 float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
     static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;

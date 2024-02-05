@@ -61,12 +61,12 @@ uniform bool UseDOFAF <
 	ui_category = "DOF";
 > = true;
 uniform float DOFFocusSpeed < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 10.0;
+	ui_min = 0.0; ui_max = 5;
     ui_label = "Focus speed";
     ui_tooltip = "Focus speed in seconds";
 	ui_category = "DOF";
     ui_units = " s";
-> = 1.0;
+> = 0.5;
 uniform float DOFFocusPx < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_label = "Focus point X";
@@ -530,8 +530,7 @@ vs2ps VS_DOF(uint id : SV_VertexID)
     vs2ps o = vs_basic(id);
     if (UseDOF)
     {
-        float depth = DOFManualFocusDist;//tex2Dfetch(spStorageTex, 0, 0).x; //Why doesn't this work? - "Cannot map to vs_5_0 instruction set", but reshade get linearized depth works
-        //(UseDOFAF) ? tex2Dfetch(spStorageTex, 0, 0).x : DOFManualFocusDist; //sample af depth fromaf texture, af texture samples from af texture and depthtex
+        float depth = (UseDOFAF) ? tex2Dfetch(spStorageTex, 0, 0).x : DOFManualFocusDist;
         float scale = ((float(DOFFocalLength*DOFFocalLength) / 10000) * DOF_SENSOR_SIZE / 18) / ((1 + depth*depth) * DOFAperture) * length(float2(BUFFER_WIDTH, BUFFER_HEIGHT))/2048;
         o.uv.z = depth;
         o.uv.w = scale;
@@ -559,7 +558,7 @@ float2 StoragePass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : COLO
 {
     float2 data = tex2D(spStorageTexC, texcoord).xy;
     //Sample DOF
-    data.x = lerp(data.x, texcoord.w, min(FrameTime / (DOFFocusSpeed * 1000 + EPSILON), 1.0));
+    data.x = lerp(data.x, texcoord.w, min(FrameTime / (DOFFocusSpeed * 500 + EPSILON), 1.0));
 
     //Sample AE
     data.y = lerp(data.y, max(Oklab::Adapted_Luma_RGB(SampleLinear(texcoord.xy).rgb, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
@@ -591,7 +590,7 @@ float4 BokehBlurPass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : CO
     return color;
 }
 
-//Bloom, based on: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
+//Bloom
 float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
     float3 color = (UseDOF) ? tex2D(spBokehBlurTex, texcoord).rgb : (BlurStrength == 0.0) ? SampleLinear(texcoord, true).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;

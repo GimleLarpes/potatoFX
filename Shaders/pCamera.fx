@@ -334,24 +334,24 @@ float3 SampleLinear(float2 texcoord)
 		: Oklab::DisplayFormat_to_Linear(color);
     return color;
 }
-float3 SampleLinear(float2 texcoord, bool use_lottes)
+float3 SampleLinear(float2 texcoord, bool use_tonemap)
 {
     float3 color = tex2D(ReShade::BackBuffer, texcoord);
     color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
 
-    if (use_lottes && !Oklab::IS_HDR)
+    if (use_tonemap && !Oklab::IS_HDR)
     {
-        color = Oklab::LottesInv(color);
+        color = Oklab::TonemapInv(color);
     }
     
     return color;
 }
 
-float3 UndoLottesInv(float3 c)
+float3 RedoTonemap(float3 c)
 {
-    return (Oklab::IS_HDR) ? c : Oklab::Lottes(c);
+    return (Oklab::IS_HDR) ? c : Oklab::Tonemap(c);
 }
 
 float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction, bool sample_linear)
@@ -455,7 +455,7 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
     [branch]
     if (sample_linear)
     {
-        color = SampleLinear(texcoord, true).rgb;
+        color = SampleLinear(texcoord, true);
         [loop]
         for (int i = 1; i < samples; ++i)
         {
@@ -561,7 +561,7 @@ float2 StoragePass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : COLO
     data.x = lerp(data.x, texcoord.w, min(FrameTime / (DOFFocusSpeed * 500 + EPSILON), 1.0));
 
     //Sample AE
-    data.y = lerp(data.y, max(Oklab::Adapted_Luma_RGB(SampleLinear(texcoord.xy).rgb, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
+    data.y = lerp(data.y, max(Oklab::Adapted_Luminance_RGB(SampleLinear(texcoord.xy).rgb, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
     return data.xy;
 }
 float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
@@ -594,11 +594,9 @@ float4 BokehBlurPass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : CO
 float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
     float3 color = (UseDOF) ? tex2D(spBokehBlurTex, texcoord).rgb : (BlurStrength == 0.0) ? SampleLinear(texcoord, true).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
-    float adapted_luma = (Oklab::IS_HDR)
-        ? Oklab::Adapted_Luma_RGB(color, 1.0)
-        : Oklab::Adapted_Luma_RGB(Oklab::Lottes(color), 1.0);
+    float adapted_luminance = Oklab::Adapted_Luminance_RGB(RedoTonemap(color), 1.0);
 
-    color *= pow(abs(adapted_luma), BloomCurve*BloomCurve);
+    color *= pow(abs(adapted_luminance), BloomCurve*BloomCurve);
     return color;
 }
 //Downsample
@@ -666,15 +664,11 @@ float3 BloomUpS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
 {
     float3 color = BoxSample(spBloomTex1, texcoord, 0.5);
-
-    if (!Oklab::IS_HDR)
-    {
-        color = Oklab::Lottes(color);
-    }
+    color = RedoTonemap(color);
 
     if (BloomGamma != 1.0)
     {
-        color *= pow(abs(Oklab::Luma_RGB(color / Oklab::INVNORM_FACTOR)), BloomGamma);
+        color *= pow(abs(Oklab::Luminance_RGB(color / Oklab::INVNORM_FACTOR)), BloomGamma);
     }
     return color;
 }
@@ -731,7 +725,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
     float blur_mix = min((4 - GaussianQuality) * BlurStrength, 1.0);
     if (BlurStrength != 0.0)
     {
-        color = lerp(color, UndoLottesInv(tex2D(spGaussianBlurTex, texcoord).rgb), blur_mix);
+        color = lerp(color, RedoTonemap(tex2D(spGaussianBlurTex, texcoord).rgb), blur_mix);
     }
 
     //DOF
@@ -739,7 +733,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
     {
         float4 dof_data = tex2D(spBokehBlurTex, texcoord);
         float dof_mix = min(10 * dof_data.a, 1.0);
-        color = lerp(color, UndoLottesInv(dof_data.rgb), dof_mix);
+        color = lerp(color, RedoTonemap(dof_data.rgb), dof_mix);
     }
 
     //Chromatic aberration
@@ -749,8 +743,8 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
         float3 influence = float3(-0.04, 0.0, 0.03);
 
         float2 step_length = CAStrength * radiant_vector;
-        color.r = (UseDOF) ? UndoLottesInv(tex2D(spBokehBlurTex, texcoord + step_length * influence.r).rgb).r : lerp(SampleLinear(texcoord + step_length * influence.r).r, UndoLottesInv(tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).rgb).r, blur_mix);
-        color.b = (UseDOF) ? UndoLottesInv(tex2D(spBokehBlurTex, texcoord + step_length * influence.b).rgb).b : lerp(SampleLinear(texcoord + step_length * influence.b).b, UndoLottesInv(tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).rgb).b, blur_mix);
+        color.r = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, texcoord + step_length * influence.r).rgb).r : lerp(SampleLinear(texcoord + step_length * influence.r).r, RedoTonemap(tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).rgb).r, blur_mix);
+        color.b = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, texcoord + step_length * influence.b).rgb).b : lerp(SampleLinear(texcoord + step_length * influence.b).b, RedoTonemap(tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).rgb).b, blur_mix);
     }
 
     //Dirt
@@ -792,7 +786,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
         float t = FrameCount * 0.456035462415 * noise_speed;
 	    t %= 10000;
-	    float luma = Oklab::Luma_RGB(color);
+	    float luminance = Oklab::Luminance_RGB(color);
 
 
 	    float seed = dot(texcoord_clean, float2(12.9898 * t, 78.233)); //12.9898, 78.233
@@ -806,7 +800,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	    float theta = 2.0 * PI * uniform_noise2;
 	
 	    float gauss_noise1 = r * cos(theta);
-	    float weight = (NoiseStrength * NoiseStrength) * NOISE_CURVE / (luma * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luma to simulate a wider dynamic range
+	    float weight = (NoiseStrength * NoiseStrength) * NOISE_CURVE / (luminance * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
 
 	    if (NoiseType == 1)
         {   //Color noise

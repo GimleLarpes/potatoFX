@@ -38,6 +38,10 @@ namespace Oklab
     #endif
     static const float HDR_PAPER_WHITE = HDR_PAPER_WHITE_NITS / SDR_WHITEPOINT;
 
+    #ifndef _HDR_TONEMAP
+        #define _HDR_TONEMAP 5.0
+    #endif
+
     
     //Invnorm factor
     #if BUFFER_COLOR_SPACE == 2     //scRGB
@@ -236,26 +240,26 @@ namespace Oklab
     {
         return float3(clamp(c.r, 0.0, INVNORM_FACTOR), clamp(c.g, 0.0, INVNORM_FACTOR), clamp(c.b, 0.0, INVNORM_FACTOR));
     }
-    float Luma_RGB(float3 c)
+    float Luminance_RGB(float3 c)
     {
         return dot(c, float3(0.2126, 0.7152, 0.0722));
     }
-    float Adapted_Luma_RGB(float3 c, float range)
+    float Adapted_Luminance_RGB(float3 c, float range)
     {
-        return min(2.0 * Luma_RGB(c) / HDR_PAPER_WHITE, range);
+        return min(2.0 * Luminance_RGB(c) / HDR_PAPER_WHITE, range);
     }
 
 
     //Tonemappers
-    float3 Lottes(float3 c)
+    float3 Tonemap(float3 c)
     {   
-        c /= (1.0 + Luma_RGB(c));
+        c /= 1.0 + (1.0 - rcp(_HDR_TONEMAP)) * Luminance_RGB(c);
         return Saturate_RGB(c);
     }
-    float3 LottesInv(float3 c)
+    float3 TonemapInv(float3 c)
     {   
-        c /= (1.0 - Luma_RGB(c));
-        return min(c, 10.0);
+        c /= 1.0 - (1.0 - rcp(_HDR_TONEMAP)) * Luminance_RGB(c);
+        return c;
     }
 
     //Transformations

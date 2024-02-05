@@ -36,7 +36,7 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 	
 	float t = FrameCount * 0.456035462415;
 	t %= 263; t += 37;
-	float luma = dot(color, float3(0.2126, 0.7152, 0.0722));
+	float luminance = dot(color, float3(0.2126, 0.7152, 0.0722));
 
 	float seed = dot(texcoord, float2(12.9898, 78.233));
 	float uniform_noise1 = frac(sin(seed) * 413.458333333 * t);
@@ -52,7 +52,7 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 	float gauss_noise1 = r * cos(theta);
 	float gauss_noise2 = r * sin(theta);
 	float gauss_noise3 = (gauss_noise1 + gauss_noise2) * 0.7;
-	float weight = Strength * NOISE_CURVE / (luma * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luma to simulate a wider dynamic range
+	float weight = Strength * NOISE_CURVE / (luminance * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
 
 	color.rgb = color.rgb * (1-weight) + float3(gauss_noise1, gauss_noise2, gauss_noise3) * weight;
 	

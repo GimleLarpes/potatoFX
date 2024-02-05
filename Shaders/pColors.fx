@@ -376,7 +376,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
-	float adapted_luma = Oklab::Adapted_Luma_RGB(color, 1.0);
+	float adapted_luminance = Oklab::Adapted_Luminance_RGB(color, 1.0);
 	color = Oklab::RGB_to_Oklab(color);
 
 	
@@ -439,7 +439,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 	////Shadows-midtones-highlights
 	//Shadows
-	float shadow_weight = get_Weight(adapted_luma, ShadowThreshold, -ShadowCurveSlope);
+	float shadow_weight = get_Weight(adapted_luminance, ShadowThreshold, -ShadowCurveSlope);
 	if (shadow_weight != 0.0)
 	{
 		color.r *= (1 + ShadowBrightness * shadow_weight);
@@ -447,7 +447,7 @@ float3 ColorsPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = lerp(color.b, ShadowTintColor.b + (1 - ShadowTintColorC) * color.b, shadow_weight) * (1 + ShadowSaturation * shadow_weight);
 	}
 	//Highlights
-	float highlight_weight = get_Weight(adapted_luma, HighlightThreshold, HighlightCurveSlope);
+	float highlight_weight = get_Weight(adapted_luminance, HighlightThreshold, HighlightCurveSlope);
 	if (highlight_weight != 0.0)
 	{
 		color.r *= (1 + HighlightBrightness * highlight_weight);

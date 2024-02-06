@@ -328,7 +328,7 @@ sampler spBloomTex8 { Texture = pBloomTex8;};
 //Functions
 float3 SampleLinear(float2 texcoord)
 {
-    float3 color = tex2D(ReShade::BackBuffer, texcoord);
+    float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
     color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
@@ -336,7 +336,7 @@ float3 SampleLinear(float2 texcoord)
 }
 float3 SampleLinear(float2 texcoord, bool use_tonemap)
 {
-    float3 color = tex2D(ReShade::BackBuffer, texcoord);
+    float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
     color = (UseApproximateTransforms)
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
@@ -489,15 +489,15 @@ float3 BoxSample(sampler s, float2 texcoord, float d)
 struct vs2ps
 {
     float4 vpos : SV_Position;
-    float4 uv : TEXCOORD0;
+    float4 texcoord : TexCoord;
 };
 
 vs2ps vs_basic(const uint id)
 {
     vs2ps o;
-    o.uv.x = (id == 2) ? 2.0 : 0.0;
-    o.uv.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(o.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    o.texcoord.x = (id == 2) ? 2.0 : 0.0;
+    o.texcoord.y = (id == 1) ? 2.0 : 0.0;
+    o.vpos = float4(o.texcoord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
     return o;
 }
 
@@ -506,7 +506,7 @@ vs2ps VS_Storage(uint id : SV_VertexID)
     vs2ps o = vs_basic(id);
     if ((UseDOFAF && UseDOF) || UseAE)
     {
-        o.uv.w = ReShade::GetLinearizedDepth(float2(DOFFocusPx, DOFFocusPy));
+        o.texcoord.w = ReShade::GetLinearizedDepth(float2(DOFFocusPx, DOFFocusPy));
     }
     else
     {
@@ -532,8 +532,8 @@ vs2ps VS_DOF(uint id : SV_VertexID)
     {
         float depth = (UseDOFAF) ? tex2Dfetch(spStorageTex, 0, 0).x : DOFManualFocusDist;
         float scale = ((float(DOFFocalLength*DOFFocalLength) / 10000) * DOF_SENSOR_SIZE / 18) / ((1 + depth*depth) * DOFAperture) * length(float2(BUFFER_WIDTH, BUFFER_HEIGHT))/2048;
-        o.uv.z = depth;
-        o.uv.w = scale;
+        o.texcoord.z = depth;
+        o.texcoord.w = scale;
     }
     else
     {
@@ -554,14 +554,14 @@ vs2ps VS_Bloom(uint id : SV_VertexID)
 
 
 ////Passes
-float2 StoragePass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : COLOR
+float2 StoragePass(vs2ps o) : COLOR
 {
-    float2 data = tex2D(spStorageTexC, texcoord).xy;
+    float2 data = tex2D(spStorageTexC, o.texcoord.xy).xy;
     //Sample DOF
-    data.x = lerp(data.x, texcoord.w, min(FrameTime / (DOFFocusSpeed * 500 + EPSILON), 1.0));
+    data.x = lerp(data.x, o.texcoord.w, min(FrameTime / (DOFFocusSpeed * 500 + EPSILON), 1.0));
 
     //Sample AE
-    data.y = lerp(data.y, max(Oklab::Adapted_Luminance_RGB(SampleLinear(texcoord.xy).rgb, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
+    data.y = lerp(data.y, max(Oklab::Adapted_Luminance_RGB(SampleLinear(o.texcoord.xy).rgb, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
     return data.xy;
 }
 float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
@@ -570,100 +570,100 @@ float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COL
 }
 
 //Blur
-float3 GaussianBlurPass1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 GaussianBlurPass1(vs2ps o) : COLOR
 {
-    return GaussianBlur(spBumpTex, texcoord, BlurStrength, float2(1.0, 0.0), true);
+    return GaussianBlur(spBumpTex, o.texcoord.xy, BlurStrength, float2(1.0, 0.0), true);
 }
-float3 GaussianBlurPass2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 GaussianBlurPass2(vs2ps o) : COLOR
 {
-    return GaussianBlur(spBokehBlurTex, texcoord, BlurStrength, float2(0.0, 1.0), false);
+    return GaussianBlur(spBokehBlurTex, o.texcoord.xy, BlurStrength, float2(0.0, 1.0), false);
 }
 
 //DOF
-float4 BokehBlurPass(float4 vpos : SV_Position, float4 texcoord : TexCoord) : COLOR
+float4 BokehBlurPass(vs2ps o) : COLOR
 {
-    float size = abs(ReShade::GetLinearizedDepth(texcoord.xy) - texcoord.z) * texcoord.w;
+    float size = abs(ReShade::GetLinearizedDepth(o.texcoord.xy) - o.texcoord.z) * o.texcoord.w;
     float4 color;
-    color.rgb = (BlurStrength != 0.0) ? BokehBlur(spGaussianBlurTex, texcoord.xy, size, false) : BokehBlur(spBumpTex, texcoord.xy, size, true);
+    color.rgb = (BlurStrength != 0.0) ? BokehBlur(spGaussianBlurTex, o.texcoord.xy, size, false) : BokehBlur(spBumpTex, o.texcoord.xy, size, true);
     color.a = size;
     
     return color;
 }
 
 //Bloom
-float3 HighPassFilter(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 HighPassFilter(vs2ps o) : COLOR
 {
-    float3 color = (UseDOF) ? tex2D(spBokehBlurTex, texcoord).rgb : (BlurStrength == 0.0) ? SampleLinear(texcoord, true).rgb : tex2D(spGaussianBlurTex, texcoord).rgb;
+    float3 color = (UseDOF) ? tex2D(spBokehBlurTex, o.texcoord.xy).rgb : (BlurStrength == 0.0) ? SampleLinear(o.texcoord.xy, true).rgb : tex2D(spGaussianBlurTex, o.texcoord.xy).rgb;
     float adapted_luminance = Oklab::Adapted_Luminance_RGB(RedoTonemap(color), 1.0);
 
     color *= pow(abs(adapted_luminance), BloomCurve*BloomCurve);
     return color;
 }
 //Downsample
-float3 BloomDownS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS1(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex0, texcoord, 1.0);
+    return BoxSample(spBloomTex0, o.texcoord.xy, 1.0);
 }
-float3 BloomDownS2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS2(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex1, texcoord, 1.0);
+    return BoxSample(spBloomTex1, o.texcoord.xy, 1.0);
 }
-float3 BloomDownS3(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS3(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex2, texcoord, 1.0);
+    return BoxSample(spBloomTex2, o.texcoord.xy, 1.0);
 }
-float3 BloomDownS4(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS4(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex3, texcoord, 1.0);
+    return BoxSample(spBloomTex3, o.texcoord.xy, 1.0);
 }
-float3 BloomDownS5(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS5(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex4, texcoord, 1.0);
+    return BoxSample(spBloomTex4, o.texcoord.xy, 1.0);
 }
-float3 BloomDownS6(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS6(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex5, texcoord, 1.0);
+    return BoxSample(spBloomTex5, o.texcoord.xy, 1.0);
 }
-float3 BloomDownS7(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS7(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex6, texcoord, 1.0);
+    return BoxSample(spBloomTex6, o.texcoord.xy, 1.0);
 }
-float3 BloomDownS8(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomDownS8(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex7, texcoord, 1.0);
+    return BoxSample(spBloomTex7, o.texcoord.xy, 1.0);
 }
 //Upsample
-float3 BloomUpS7(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomUpS7(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex8, texcoord, 0.5) * 0.25;
+    return BoxSample(spBloomTex8, o.texcoord.xy, 0.5) * 0.25;
 }
-float3 BloomUpS6(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomUpS6(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex7, texcoord, 0.5);
+    return BoxSample(spBloomTex7, o.texcoord.xy, 0.5);
 }
-float3 BloomUpS5(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomUpS5(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex6, texcoord, 0.5);
+    return BoxSample(spBloomTex6, o.texcoord.xy, 0.5);
 }
-float3 BloomUpS4(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomUpS4(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex5, texcoord, 0.5);
+    return BoxSample(spBloomTex5, o.texcoord.xy, 0.5);
 }
-float3 BloomUpS3(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomUpS3(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex4, texcoord, 0.5);
+    return BoxSample(spBloomTex4, o.texcoord.xy, 0.5);
 }
-float3 BloomUpS2(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomUpS2(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex3, texcoord, 0.5);
+    return BoxSample(spBloomTex3, o.texcoord.xy, 0.5);
 }
-float3 BloomUpS1(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomUpS1(vs2ps o) : COLOR
 {
-    return BoxSample(spBloomTex2, texcoord, 0.5) + tex2D(spBloomTex1, texcoord).rgb;
+    return BoxSample(spBloomTex2, o.texcoord.xy, 0.5) + tex2D(spBloomTex1, o.texcoord.xy).rgb;
 }
-float3 BloomUpS0(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
+float3 BloomUpS0(vs2ps o) : COLOR
 {
-    float3 color = BoxSample(spBloomTex1, texcoord, 0.5);
+    float3 color = BoxSample(spBloomTex1, o.texcoord.xy, 0.5);
     color = RedoTonemap(color);
 
     if (BloomGamma != 1.0)
@@ -773,7 +773,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
         static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
 
         float noise_speed = 1;
-        float noise_coord = texcoord_clean;
+        float2 noise_coord = texcoord_clean;
         if (NoiseType == 1)
         {
            noise_coord /= PI;

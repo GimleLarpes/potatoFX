@@ -10,11 +10,11 @@ Supported HDR formats:  | **HDR10** | **HLG** | **scRGB** |
 A high performance all-in-one shader with many common lens and camera effects.
 - Gaussian blur
 - Depth of field
+- Bloom
+- Lens dirt
 - Fisheye
 - Glass imperfections
 - Chromatic aberration
-- Lens dirt
-- Bloom
 - Vignette
 - Noise
     - Film-like noise and digital chroma noise

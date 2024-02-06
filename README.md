@@ -6,6 +6,20 @@ Supported HDR formats:  | **HDR10** | **HLG** | **scRGB** |
 
 
 # Shaders
+## pCamera
+A high performance all-in-one shader with many common lens and camera effects.
+- Gaussian blur
+- Depth of field
+- Fisheye
+- Glass imperfections
+- Chromatic aberration
+- Lens dirt
+- Bloom
+- Vignette
+- Noise
+    - Film-like noise and digital chroma noise
+- Auto exposure
+
 ## pColorNoise
 Generates gaussian chroma noise to simulate amplifier noise in digital cameras.
 

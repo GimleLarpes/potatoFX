@@ -51,10 +51,10 @@ float cdistance(float v, float t)
 }
 
 //--wnoise, returns time variable white noise
-float wnoise(float2 uv, float2 dir = float2(12.9898, 78.2333))
+float wnoise(float2 uv, float2 d = float2(12.9898, 78.2333))
 {
     float t = float(FrameCount % 1000 + 1);
-    return frac(sin(dot(uv, dir) * t) * 143758.5453);
+    return frac(sin(dot(uv, d) * t) * 143758.5453);
 }
 
 }

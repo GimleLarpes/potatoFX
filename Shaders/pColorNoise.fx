@@ -7,6 +7,10 @@
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
 
+static const float PI = pUtils::PI;
+static const float EPSILON = pUtils::EPSILON;
+static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
+
 uniform float Strength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_tooltip = "Noise strength";
@@ -27,11 +31,7 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
 	
-	static const float PI = pUtils::PI;
-	static const float EPSILON = pUtils::EPSILON;
-	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
-	
 	float luminance = dot(color, float3(0.2126, 0.7152, 0.0722));
 
 	//White noise

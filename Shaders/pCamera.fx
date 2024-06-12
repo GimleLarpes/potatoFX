@@ -12,7 +12,6 @@
     #error "Outdated ReShade installation - ReShade 5.9+ is required"
 #endif
 
-uniform float FrameTime < source = "frametime"; >;
 static const float PI = pUtils::PI;
 static const float EPSILON = pUtils::EPSILON;
 
@@ -446,7 +445,7 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
     float2 step_length = TEXEL_SIZE * size * size_compensation;
 
     static const float MAX_VARIANCE = 0.1;
-    float2 variance = FrameCount * float2(sin(2000 * PI * texcoord.x), cos(2000 * PI * texcoord.y)) * 1000.0;
+    float2 variance = pUtils::FrameCount * float2(sin(2000 * PI * texcoord.x), cos(2000 * PI * texcoord.y)) * 1000.0;
     variance %= MAX_VARIANCE;
     variance = 1 + variance - MAX_VARIANCE * 0.5;
 
@@ -557,10 +556,10 @@ float2 StoragePass(vs2ps o) : COLOR
 {
     float2 data = tex2D(spStorageTexC, o.texcoord.xy).xy;
     //Sample DOF
-    data.x = lerp(data.x, o.texcoord.w, min(FrameTime / (DOFFocusSpeed * 500 + EPSILON), 1.0));
+    data.x = lerp(data.x, o.texcoord.w, min(pUtils::FrameTime / (DOFFocusSpeed * 500 + EPSILON), 1.0));
 
     //Sample AE
-    data.y = lerp(data.y, max(Oklab::Adapted_Luminance_RGB(SampleLinear(o.texcoord.xy).rgb, AE_RANGE), AE_MIN_BRIGHTNESS), min(FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
+    data.y = lerp(data.y, max(Oklab::Adapted_Luminance_RGB(SampleLinear(o.texcoord.xy).rgb, AE_RANGE), AE_MIN_BRIGHTNESS), min(pUtils::FrameTime / (AESpeed * 1000 + EPSILON), 1.0));
     return data.xy;
 }
 float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR

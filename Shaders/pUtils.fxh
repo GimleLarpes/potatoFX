@@ -1,15 +1,17 @@
 //A collection of useful stuff
-uniform int FrameCount < source = "framecount"; >;
-
-
 namespace pUtils
 {
+//Uniforms
+uniform float FrameTime < source = "frametime"; >;
+uniform int FrameCount < source = "framecount"; >;
+
 //Constants
 static const float PI = 3.1415927;
 static const float EPSILON = 1e-10;
 static const float2 ASPECT_RATIO = float2(1.0, 1.0/BUFFER_ASPECT_RATIO);
 
 
+//Functions
 //--fastatan2
 float fastatan2(float y, float x)//error < 0.2 degrees, saves about 40% vs atan2 developed by Lord of Lunacy and Marty McFly
 {

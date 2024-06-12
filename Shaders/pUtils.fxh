@@ -1,12 +1,13 @@
 //A collection of useful stuff
+uniform int FrameCount < source = "framecount"; >;
+
+
 namespace pUtils
 {
 //Constants
 static const float PI = 3.1415927;
 static const float EPSILON = 1e-10;
 static const float2 ASPECT_RATIO = float2(1.0, 1.0/BUFFER_ASPECT_RATIO);
-
-uniform int FrameCount < source = "framecount"; >;
 
 
 //--fastatan2
@@ -51,10 +52,10 @@ float cdistance(float v, float t)
 }
 
 //--wnoise, returns time variable white noise
-float wnoise(float2 uv, float2 d = float2(12.9898, 78.2333))
+float wnoise(float2 uv, float2 d)
 {
     float t = float(FrameCount % 1000 + 1);
-    return frac(sin(dot(uv, d) * t) * 143758.5453);
+    return frac(sin(dot(uv - 0.5, d) * t) * 143758.5453);
 }
 
 }

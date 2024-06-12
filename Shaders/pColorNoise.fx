@@ -11,7 +11,7 @@ uniform float Strength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
     ui_tooltip = "Noise strength";
 	ui_category = "Settings";
-> = 0.05;
+> = 0.12;
 uniform bool UseApproximateTransforms <
 	ui_type = "bool";
 	ui_label = "Fast colorspace transform";

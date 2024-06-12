@@ -6,6 +6,9 @@ static const float PI = 3.1415927;
 static const float EPSILON = 1e-10;
 static const float2 ASPECT_RATIO = float2(1.0, 1.0/BUFFER_ASPECT_RATIO);
 
+uniform int FrameCount < source = "framecount"; >;
+
+
 //--fastatan2
 float fastatan2(float y, float x)//error < 0.2 degrees, saves about 40% vs atan2 developed by Lord of Lunacy and Marty McFly
 {
@@ -16,6 +19,7 @@ float fastatan2(float y, float x)//error < 0.2 degrees, saves about 40% vs atan2
     i = a ? (x < 0 ? piadd : 0) + i : 0.5 * piadd - i;
     return i;
 }
+
 //--cbrt
 float cbrt(float v)
 {
@@ -25,6 +29,7 @@ float3 cbrt(float3 v)
 {
     return sign(v) * pow(abs(v), 0.33333333);
 }
+
 //--clerp, lerps the shortest way between two angles
 float clerp(float v, float t, float w)
 {   
@@ -34,6 +39,7 @@ float clerp(float v, float t, float w)
         : t;
     return (t - v) * w + v;
 }
+
 //--cdistance, returns the shortest distance between two angles
 float cdistance(float v, float t)
 {   
@@ -42,6 +48,13 @@ float cdistance(float v, float t)
         ? d - sign(d) * PI
         : d;
     return abs(d);
+}
+
+//--wnoise, returns time variable white noise
+float wnoise(float2 uv, float2 dir = float2(12.9898, 78.2333))
+{
+    float t = float(FrameCount % 1000 + 1);
+    return frac(sin(dot(uv, dir) * t) * 143758.5453);
 }
 
 }

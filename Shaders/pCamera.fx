@@ -449,7 +449,7 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
     static const float MAX_VARIANCE = 0.1;
     float2 variance = FrameCount * float2(sin(2000 * PI * texcoord.x), cos(2000 * PI * texcoord.y)) * 1000.0;
     variance %= MAX_VARIANCE;
-    variance = 1 + variance - MAX_VARIANCE / 2.0;
+    variance = 1 + variance - MAX_VARIANCE * 0.5;
 
     float3 color;
     [branch]
@@ -482,6 +482,11 @@ float3 BoxSample(sampler s, float2 texcoord, float d)
 
     float3 color = tex2D(s, texcoord + o.xy).rgb + tex2D(s, texcoord + o.zy).rgb + tex2D(s, texcoord + o.xw).rgb + tex2D(s, texcoord + o.zw).rgb;
     return color * 0.25;
+}
+
+float3 ClipBlacks(float3 c)
+{
+    return float3(max(c.r, 0.0), max(c.g, 0.0), max(c.b, 0.0));
 }
 
 
@@ -771,46 +776,44 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
     if (NoiseStrength != 0.0)
     {
         static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
+        float luminance = Oklab::Luminance_RGB(color);
 
-        float noise_speed = 1;
+        float noise_speed = 1.0;
         float2 noise_coord = texcoord_clean;
         if (NoiseType == 1)
         {
            noise_coord /= PI;
-           noise_speed = 60;
+           noise_speed = 60.0;
         }
 
-        //REDO NOISE
-
-        float t = FrameCount * 0.456035462415 * noise_speed;
+        float t = FrameCount * noise_speed * 0.45603546;
 	    t %= 10000;
-	    float luminance = Oklab::Luminance_RGB(color);
 
+        float seed = (t * (1 + FrameTime)) % FrameTime;
 
-	    float seed = dot(texcoord_clean, float2(12.9898 * t, 78.233)); //12.9898, 78.233
-	    float uniform_noise1 = frac((sin(seed * t) * 0.5 + 0.5) * t);// * 413.458333333 * t
-	    float uniform_noise2 = frac((cos(seed * t) * 0.5 + 0.5) * t);// * 524.894736842 * t
+        // Plan: generate two angles, so that
+        float r = 1.0; //Placeholder values, how to actually generate kinda random numbers
+        float theta = frac(frac(noise_coord.x * 23942 + FrameTime) * seed + t) * 2 * PI; // This doesn't really work
+        float phi = frac(frac(noise_coord.y * 17269 + t) * seed + FrameTime) * 2 * PI;
 
-	    uniform_noise1 = (uniform_noise1 < EPSILON) ? EPSILON : uniform_noise1; //fix log(0)
-		
-	    float r = sqrt(-log(uniform_noise1));
-	    r = (uniform_noise1 < EPSILON) ? PI : r; //fix log(0) - PI happened to be the right answer for uniform_noise == ~ 0.0000517
-	    float theta = 2.0 * PI * uniform_noise2;
-	
-	    float gauss_noise1 = r * cos(theta);
+        // Use angles to generate even noise
+        float cost = cos(theta);
+        float sint = sin(theta);
+        float cosp = cos(phi);
+        float sinp = sin(phi);
+
+        float3 gauss_noise = float3(cost * sinp, cosp * sint, sinp * sin(theta + PI*2/3));
+
 	    float weight = (NoiseStrength * NoiseStrength) * NOISE_CURVE / (luminance * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
-
+        
 	    if (NoiseType == 1)
         {   //Color noise
-            float gauss_noise2 = r * sin(theta);
-	        float gauss_noise3 = (gauss_noise1 + gauss_noise2) * 0.7;
-            color.rgb = color.rgb * (1-weight) + Oklab::Saturate_RGB(float3(gauss_noise1, gauss_noise2, gauss_noise3)) * weight; //Change this to be color * (1-weight + noise * weight)
+            color.rgb = color.rgb * (1-weight) + Oklab::Saturate_RGB(r * gauss_noise) * weight;
         }
         else
         {   //Film grain
-            color.rgb = color.rgb * (1-weight) + (gauss_noise1 - 0.225) * weight;
+            color.rgb = ClipBlacks(color.rgb * (1-weight) + (gauss_noise.x - 0.225) * weight);
         }
-        //color.rgb = uniform_noise1; //DEBUG
     }
 
     //Auto exposure
@@ -832,7 +835,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_Linear_to_DisplayFormat(color)
 		: Oklab::Linear_to_DisplayFormat(color);
-	return color.rgb;
+    return color.rgb;
 }
 
 technique Camera <ui_tooltip = 

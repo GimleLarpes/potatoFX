@@ -12,7 +12,6 @@
     #error "Outdated ReShade installation - ReShade 5.9+ is required"
 #endif
 
-uniform int FrameCount < source = "framecount"; >;
 uniform float FrameTime < source = "frametime"; >;
 static const float PI = pUtils::PI;
 static const float EPSILON = pUtils::EPSILON;
@@ -147,7 +146,7 @@ uniform float DirtStrength < __UNIFORM_SLIDER_FLOAT1
     ui_label = "Dirt amount";
     ui_tooltip = "Amount of dirt on the lens";
 	ui_category = "Lens Imperfections";
-> = 0.12;
+> = 0.08;
 uniform float DirtScale < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.5; ui_max = 2.5;
     ui_label = "Dirt scale";
@@ -214,7 +213,7 @@ uniform float NoiseStrength < __UNIFORM_SLIDER_FLOAT1
     ui_label = "Noise amount";
     ui_tooltip = "Amount of noise to apply";
 	ui_category = "Noise";
-> = 0.18;
+> = 0.12;
 uniform int NoiseType < __UNIFORM_RADIO_INT1
 	ui_label = "Noise type";
 	ui_tooltip = "Type of noise to use";
@@ -482,11 +481,6 @@ float3 BoxSample(sampler s, float2 texcoord, float d)
 
     float3 color = tex2D(s, texcoord + o.xy).rgb + tex2D(s, texcoord + o.zy).rgb + tex2D(s, texcoord + o.xw).rgb + tex2D(s, texcoord + o.zw).rgb;
     return color * 0.25;
-}
-
-float3 ClipBlacks(float3 c)
-{
-    return float3(max(c.r, 0.0), max(c.g, 0.0), max(c.b, 0.0));
 }
 
 
@@ -778,42 +772,23 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
         static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
         float luminance = Oklab::Luminance_RGB(color);
 
-        float noise_speed = 1.0;
-        float2 noise_coord = texcoord_clean;
-        if (NoiseType == 1)
-        {
-           noise_coord /= PI;
-           noise_speed = 60.0;
-        }
+        //White noise
+        float noise1 = pUtils::wnoise(texcoord_clean, float2(6.4949, 39.116));
+        float noise2 = pUtils::wnoise(texcoord_clean, float2(19.673, 5.5675));
+        float noise3 = pUtils::wnoise(texcoord_clean, float2(36.578, 26.118));
 
-        float t = FrameCount * noise_speed * 0.45603546;
-	    t %= 10000;
+        //Box-Muller transform
+        float r = sqrt(-2.0 * log(noise1 + EPSILON));
+        float theta1 = 2.0 * PI * noise2;
+        float theta2 = 2.0 * PI * noise3;
 
-        float seed = (t * (1 + FrameTime)) % FrameTime;
+        //Sensor sensitivity to color channels: https://www.1stvision.com/cameras/AVT/dataman/ibis5_a_1300_8.pdf
+        float3 gauss_noise = float3(r * cos(theta1) * 1.33, r * sin(theta1) * 1.25, r * cos(theta2) * 2.0);
+        gauss_noise = (NoiseType == 0) ? gauss_noise.rrr : gauss_noise;
 
-        // Plan: generate two angles, so that
-        float r = 1.0; //Placeholder values, how to actually generate kinda random numbers
-        float theta = frac(frac(noise_coord.x * 23942 + FrameTime) * seed + t) * 2 * PI; // This doesn't really work
-        float phi = frac(frac(noise_coord.y * 17269 + t) * seed + FrameTime) * 2 * PI;
-
-        // Use angles to generate even noise
-        float cost = cos(theta);
-        float sint = sin(theta);
-        float cosp = cos(phi);
-        float sinp = sin(phi);
-
-        float3 gauss_noise = float3(cost * sinp, cosp * sint, sinp * sin(theta + PI*2/3));
-
-	    float weight = (NoiseStrength * NoiseStrength) * NOISE_CURVE / (luminance * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
+	    float weight = (NoiseStrength * NoiseStrength) * NOISE_CURVE / (luminance * (1.0 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
         
-	    if (NoiseType == 1)
-        {   //Color noise
-            color.rgb = color.rgb * (1-weight) + Oklab::Saturate_RGB(r * gauss_noise) * weight;
-        }
-        else
-        {   //Film grain
-            color.rgb = ClipBlacks(color.rgb * (1-weight) + (gauss_noise.x - 0.225) * weight);
-        }
+        color.rgb = Oklab::Saturate_RGB(color.rgb * (1.0-weight) + gauss_noise * weight);
     }
 
     //Auto exposure

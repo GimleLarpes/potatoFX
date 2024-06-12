@@ -1,8 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // pColorNoise.fx by Gimle Larpes
 // Generates gaussian chroma noise to simulate amplifier noise in digital cameras.
-//
-// Gaussian code is from FilmGrain.fx by Christian Cann Schuldt Jensen ~ CeeJay.dk
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include "ReShade.fxh"
@@ -21,7 +19,6 @@ uniform bool UseApproximateTransforms <
 	ui_category = "Performance";
 > = false;
 
-uniform int FrameCount < source = "framecount"; >; //Use to vary noise
 
 float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
@@ -30,31 +27,29 @@ float3 ColorNoisePass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : S
 		? Oklab::Fast_DisplayFormat_to_Linear(color)
 		: Oklab::DisplayFormat_to_Linear(color);
 	
-	static const float PI = 3.1415927;
+	static const float PI = pUtils::PI;
+	static const float EPSILON = pUtils::EPSILON;
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
 	
-	float t = FrameCount * 0.456035462415;
-	t %= 263; t += 37;
 	float luminance = dot(color, float3(0.2126, 0.7152, 0.0722));
 
-	float seed = dot(texcoord, float2(12.9898, 78.233));
-	float uniform_noise1 = frac(sin(seed) * 413.458333333 * t);
-	float uniform_noise2 = frac(cos(seed) * 524.894736842 * t);
+	//White noise
+    float noise1 = pUtils::wnoise(texcoord, float2(6.4949, 39.116));
+    float noise2 = pUtils::wnoise(texcoord, float2(19.673, 5.5675));
+    float noise3 = pUtils::wnoise(texcoord, float2(36.578, 26.118));
 
-	//Box-Muller transform
-	uniform_noise1 = (uniform_noise1 < 0.0001) ? 0.0001 : uniform_noise1; //fix log(0)
-		
-	float r = sqrt(-log(uniform_noise1));
-	r = (uniform_noise1 < 0.0001) ? PI : r; //fix log(0) - PI happened to be the right answer for uniform_noise == ~ 0.0000517
-	float theta = (2.0 * PI) * uniform_noise2;
-	
-	float gauss_noise1 = r * cos(theta);
-	float gauss_noise2 = r * sin(theta);
-	float gauss_noise3 = (gauss_noise1 + gauss_noise2) * 0.7;
-	float weight = Strength * NOISE_CURVE / (luminance * (1 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
+    //Box-Muller transform
+    float r = sqrt(-2.0 * log(noise1 + EPSILON));
+    float theta1 = 2.0 * PI * noise2;
+    float theta2 = 2.0 * PI * noise3;
 
-	color.rgb = color.rgb * (1-weight) + float3(gauss_noise1, gauss_noise2, gauss_noise3) * weight;
+    //Sensor sensitivity to color channels: https://www.1stvision.com/cameras/AVT/dataman/ibis5_a_1300_8.pdf
+    float3 gauss_noise = float3(r * cos(theta1) * 1.33, r * sin(theta1) * 1.25, r * cos(theta2) * 2.0);
+
+	float weight = (Strength * Strength) * NOISE_CURVE / (luminance * (1.0 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
+        
+    color.rgb = Oklab::Saturate_RGB(color.rgb * (1.0-weight) + gauss_noise * weight);
 	
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_Linear_to_DisplayFormat(color)

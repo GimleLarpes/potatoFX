@@ -3,9 +3,11 @@
 // Posterizes an image to a custom color palette.
 ///////////////////////////////////////////////////////////////////////////////////
 
+#define P_OKLAB_VERSION_REQUIRE 100
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
+
 uniform int PaletteType < __UNIFORM_RADIO_INT1
 	ui_label = "Color palette";
 	ui_tooltip = "Type of color palette to use";

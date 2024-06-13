@@ -1,4 +1,16 @@
-//A collection of useful stuff
+//Version check
+#ifndef P_UTILS_VERSION
+    #define P_UTILS_VERSION 100
+#endif
+
+#if P_UTILS_VERSION < P_UTILS_VERSION_REQUIRE
+    #error "Outdated pUtils.fxh installation - Download update from: github.com/GimleLarpes/potatoFX/"
+#endif
+#if !defined(P_UTILS_VERSION_REQUIRE)
+    #error "Incompatible Oklab.fxh file - Download update from: github.com/GimleLarpes/potatoFX/"
+#endif
+
+
 namespace pUtils
 {
 //Uniforms

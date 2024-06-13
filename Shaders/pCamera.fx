@@ -3,6 +3,7 @@
 // A high performance all-in-one shader with many common lens and camera effects.
 ///////////////////////////////////////////////////////////////////////////////////
 
+#define P_OKLAB_VERSION_REQUIRE 100
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
@@ -11,6 +12,7 @@
 #if !defined(__RESHADE__) || __RESHADE__ < 50900
     #error "Outdated ReShade installation - ReShade 5.9+ is required"
 #endif
+
 
 static const float PI = pUtils::PI;
 static const float EPSILON = pUtils::EPSILON;

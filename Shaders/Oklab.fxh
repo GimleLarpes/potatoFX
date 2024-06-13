@@ -10,12 +10,26 @@
 //
 // Conversions are between sRGB <-> Linear RGB <-> CIE-XYZ <-> Oklab <-> LCh
 ///////////////////////////////////////////////////////////////////////////////////
+
+#define P_UTILS_VERSION_REQUIRE 100
 #include "pUtils.fxh"
 
 //Version check
 #if !defined(__RESHADE__) || __RESHADE__ < 50100
     #error "Outdated ReShade installation - ReShade 5.1+ is required"
 #endif
+
+#ifndef P_OKLAB_VERSION
+    #define P_OKLAB_VERSION 100
+#endif
+
+#if P_OKLAB_VERSION < P_OKLAB_VERSION_REQUIRE
+    #error "Outdated Oklab.fxh installation - Download update from: github.com/GimleLarpes/potatoFX/"
+#endif
+#if !defined(P_OKLAB_VERSION_REQUIRE)
+    #error "Incompatible effects files - Download update from: github.com/GimleLarpes/potatoFX/"
+#endif
+
 
 namespace Oklab
 {

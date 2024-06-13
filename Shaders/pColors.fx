@@ -3,6 +3,7 @@
 // Shader with tools for color correction and grading.
 ///////////////////////////////////////////////////////////////////////////////////
 
+#define P_OKLAB_VERSION_REQUIRE 100
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"

@@ -22,37 +22,37 @@ uniform float3 BaseColor < __UNIFORM_COLOR_FLOAT3
 uniform int NumColors < __UNIFORM_SLIDER_INT1
 	ui_label = "Number of colors";
 	ui_min = 2; ui_max = 16;
-    ui_tooltip = "Number of colors to posterize to";
+	ui_tooltip = "Number of colors to posterize to";
 	ui_category = "Settings";
 > = 4;
 uniform float PaletteBalance < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Palette Balance";
 	ui_min = 0.01; ui_max = 2.0;
-    ui_tooltip = "Adjusts thresholds for color palette";
+	ui_tooltip = "Adjusts thresholds for color palette";
 	ui_category = "Settings";
 > = 1.0;
 uniform float DitheringFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Dithering";
 	ui_min = 0.0; ui_max = 0.1;
-    ui_tooltip = "Amount of dithering to be applied";
+	ui_tooltip = "Amount of dithering to be applied";
 	ui_category = "Settings";
 > = 0.02;
 uniform bool DesaturateHighlights <
 	ui_type = "bool";
 	ui_label = "Desaturate highlights";
-    ui_tooltip = "Creates a less harsh image";
+	ui_tooltip = "Creates a less harsh image";
 	ui_category = "Settings";
 > = false;
 uniform float DesaturateFactor < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Desaturate amount";
 	ui_min = 0.0; ui_max = 1.0;
-    ui_tooltip = "How much to desaturate highlights";
+	ui_tooltip = "How much to desaturate highlights";
 	ui_category = "Settings";
 > = 0.75;
 uniform bool UseApproximateTransforms <
 	ui_type = "bool";
 	ui_label = "Fast colorspace transform";
-    ui_tooltip = "Use less accurate approximations instead of the full transform functions";
+	ui_tooltip = "Use less accurate approximations instead of the full transform functions";
 	ui_category = "Performance";
 > = false;
 

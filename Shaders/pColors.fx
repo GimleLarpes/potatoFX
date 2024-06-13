@@ -14,20 +14,20 @@ static const float PI = pUtils::PI;
 uniform float WBTemperature < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -0.25; ui_max = 0.25;
 	ui_label = "Temperature";
-    ui_tooltip = "Color temperature adjustment (Blue <-> Yellow)";
+	ui_tooltip = "Color temperature adjustment (Blue <-> Yellow)";
 	ui_category = "White balance";
 > = 0.0;
 uniform float WBTint < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -0.25; ui_max = 0.25;
 	ui_label = "Tint";
-    ui_tooltip = "Color tint adjustment (Magenta <-> Green)";
+	ui_tooltip = "Color tint adjustment (Magenta <-> Green)";
 	ui_category = "White balance";
 > = 0.0;
 //Global adjustments
 uniform float GlobalSaturation < __UNIFORM_SLIDER_FLOAT1
 	ui_min = -1.0; ui_max = 1.0;
 	ui_label = "Saturation";
-    ui_tooltip = "Saturation adjustment";
+	ui_tooltip = "Saturation adjustment";
 	ui_category = "Global adjustments";
 > = 0.0;
 uniform float GlobalBrightness < __UNIFORM_SLIDER_FLOAT1
@@ -275,7 +275,7 @@ uniform float HighlightCurveSlope < __UNIFORM_SLIDER_FLOAT1
 uniform bool EnableLUT <
 	ui_type = "bool";
 	ui_label = "Enable LUT";
-    ui_tooltip = "Apply a LUT as a final processing step\n\nIncrease HDR_PEAK_LUMINANCE_NITS if enabling this causes clipping";
+	ui_tooltip = "Apply a LUT as a final processing step\n\nIncrease HDR_PEAK_LUMINANCE_NITS if enabling this causes clipping";
 	ui_category = "LUT";
 > = false;
 
@@ -307,7 +307,7 @@ sampler sLUT { Texture = LUT; };
 uniform bool UseApproximateTransforms <
 	ui_type = "bool";
 	ui_label = "Fast colorspace transform";
-    ui_tooltip = "Use less accurate approximations instead of the full transform functions";
+	ui_tooltip = "Use less accurate approximations instead of the full transform functions";
 	ui_category = "Performance";
 > = false;
 

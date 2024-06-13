@@ -94,7 +94,7 @@ namespace Oklab
         static const float c2 = 18.8515625; // 2413/128
         static const float c3 = 18.6875;    // 2392/128
         const float3 p = pow(abs(c), rcp(m2));
-        c = pow(abs(max(p - c1, 0.0) / (c2 - c3 * p)) , rcp(m1)); 
+        c = pow(abs(max(p - c1, 0.0) / (c2 - c3 * p)), rcp(m1)); 
         return c * 10000.0 / SDR_WHITEPOINT;
     }
     float3 Linear_to_PQ(float3 c)
@@ -158,12 +158,12 @@ namespace Oklab
     //Automatic conversions
     float3 DisplayFormat_to_Linear(float3 c)
     {   
-        #if BUFFER_COLOR_SPACE == 2//scRGB
+        #if BUFFER_COLOR_SPACE == 2   //scRGB
             c = (c < EPSILON) //Avoid reshade bug
                 ? EPSILON
                 : c;
 
-        #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
+        #elif BUFFER_COLOR_SPACE == 3 //HDR10 ST2084
             c = PQ_to_Linear(c);
 
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
@@ -176,7 +176,7 @@ namespace Oklab
     }
     float3 Linear_to_DisplayFormat(float3 c)
     {   
-        #if BUFFER_COLOR_SPACE == 2//scRGB
+        #if BUFFER_COLOR_SPACE == 2   //scRGB
             c = c;
 
         #elif BUFFER_COLOR_SPACE == 3 //HDR10 ST2084
@@ -192,12 +192,12 @@ namespace Oklab
     }
     float3 Fast_DisplayFormat_to_Linear(float3 c)
     {   
-        #if BUFFER_COLOR_SPACE == 2//scRGB
+        #if BUFFER_COLOR_SPACE == 2   //scRGB
             c = (c < EPSILON) //Avoid reshade bug
                 ? EPSILON
                 : c;
 
-        #elif BUFFER_COLOR_SPACE == 3//HDR10 ST2084
+        #elif BUFFER_COLOR_SPACE == 3 //HDR10 ST2084
             c = Fast_PQ_to_Linear(c);
 
         #elif BUFFER_COLOR_SPACE == 4 //HDR10 HLG
@@ -210,7 +210,7 @@ namespace Oklab
     }
     float3 Fast_Linear_to_DisplayFormat(float3 c)
     {   
-        #if BUFFER_COLOR_SPACE == 2//scRGB
+        #if BUFFER_COLOR_SPACE == 2   //scRGB
             c = c;
 
         #elif BUFFER_COLOR_SPACE == 3 //HDR10 ST2084

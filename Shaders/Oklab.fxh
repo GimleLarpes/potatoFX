@@ -27,7 +27,7 @@
 	#error "Outdated Oklab.fxh installation - Download update from: github.com/GimleLarpes/potatoFX/"
 #endif
 #if !defined(P_OKLAB_VERSION_REQUIRE)
-	#error "Incompatible effects files - Download update from: github.com/GimleLarpes/potatoFX/"
+	#error "Incompatible effects file - Download update from: github.com/GimleLarpes/potatoFX/"
 #endif
 
 

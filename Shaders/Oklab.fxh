@@ -19,11 +19,11 @@
 	#error "Outdated ReShade installation - ReShade 5.1+ is required"
 #endif
 
-#ifndef P_OKLAB_VERSION
-	#define P_OKLAB_VERSION 100
+#ifndef _P_OKLAB_VERSION
+	#define _P_OKLAB_VERSION 100
 #endif
 
-#if P_OKLAB_VERSION < P_OKLAB_VERSION_REQUIRE
+#if _P_OKLAB_VERSION < P_OKLAB_VERSION_REQUIRE
 	#error "Outdated Oklab.fxh installation - Download update from: github.com/GimleLarpes/potatoFX/"
 #endif
 #if !defined(P_OKLAB_VERSION_REQUIRE)

@@ -274,7 +274,7 @@ namespace Oklab
 		#if HDR_ACES_TONEMAP == 1
 			//ACES - Credit to Krzysztof Narkowicz
 			c *= 0.6;
-			c *= (2.51 * c + 0.03)/(c * (2.43 * c + 0.59) + 0.14);
+			c *= (2.51 * c + 0.03) / (c * (2.43 * c + 0.59) + 0.14);
 		#else
 			//Lottes
 			c /= 1.0 + (1.0 - rcp(_HDR_TONEMAP)) * Luminance_RGB(c);

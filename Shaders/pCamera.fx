@@ -214,7 +214,7 @@ uniform float NoiseStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Noise amount";
 	ui_tooltip = "Amount of noise to apply";
 	ui_category = "Noise";
-> = 0.12;
+> = 0.08;
 uniform int NoiseType < __UNIFORM_RADIO_INT1
 	ui_label = "Noise type";
 	ui_tooltip = "Type of noise to use";

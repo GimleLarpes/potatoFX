@@ -227,7 +227,7 @@ uniform int NoiseType < __UNIFORM_RADIO_INT1
 	#define AE_RANGE 1.0
 #endif
 #ifndef AE_MIN_BRIGHTNESS
-	#define AE_MIN_BRIGHTNESS 0.05
+	#define AE_MIN_BRIGHTNESS 0.02
 #endif
 uniform bool UseAE <
 	ui_type = "bool";

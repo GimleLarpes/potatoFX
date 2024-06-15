@@ -162,6 +162,10 @@ uniform float DirtScale < __UNIFORM_SLIDER_FLOAT1
 #else
 	static const float BLOOM_CURVE_DEFAULT = 1.0;
 	static const float BLOOM_GAMMA_DEFAULT = 0.8;
+
+	#ifndef HDR_ACES_TONEMAP
+		#define HDR_ACES_TONEMAP 1
+	#endif
 #endif
 uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;

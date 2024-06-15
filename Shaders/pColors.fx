@@ -294,7 +294,7 @@ uniform float LUT_WhitePoint < __UNIFORM_SLIDER_FLOAT1
 	#define fLUT_TextureName "lut.png"
 #endif
 #ifndef fLUT_Resolution
-	#define fLUT_Resolution 32.0
+	#define fLUT_Resolution 32
 #endif
 #ifndef fLUT_Format
 	#define fLUT_Format RGBA8

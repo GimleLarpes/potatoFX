@@ -280,12 +280,12 @@ uniform bool EnableLUT <
 > = false;
 
 #if BUFFER_COLOR_SPACE > 1	//Show LUT whitepoint setting if in HDR
-uniform float LUT_WhitePoint < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 1.0;
-	ui_label = "LUT White point";
-	ui_tooltip = "Adjusts what range of brightness LUT affects, useful when applying SDR LUTs to HDR\n\n(0= apply LUT to nothing, 1= apply LUT to entire image)";
-	ui_category = "LUT";
-> = 1.0;
+	uniform float LUT_WhitePoint < __UNIFORM_SLIDER_FLOAT1
+		ui_min = 0.0; ui_max = 1.0;
+		ui_label = "LUT White point";
+		ui_tooltip = "Adjusts what range of brightness LUT affects, useful when applying SDR LUTs to HDR\n\n(0= apply LUT to nothing, 1= apply LUT to entire image)";
+		ui_category = "LUT";
+	> = 1.0;
 #else
 	static const float LUT_WhitePoint = 1.0;
 #endif

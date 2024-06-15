@@ -49,10 +49,6 @@ namespace Oklab
 		static const bool IS_HDR = false;
 		#undef HDR_PAPER_WHITE_NITS
 		#define HDR_PAPER_WHITE_NITS 50.0
-
-		#ifndef HDR_ACES_TONEMAP
-			#define HDR_ACES_TONEMAP 1
-		#endif
 	#endif
 	static const float HDR_PAPER_WHITE = HDR_PAPER_WHITE_NITS / SDR_WHITEPOINT;
 
@@ -271,25 +267,27 @@ namespace Oklab
 	//Tonemappers
 	float3 Tonemap(float3 c)
 	{
-		#if HDR_ACES_TONEMAP == 1
+		#if !defined(HDR_ACES_TONEMAP) || HDR_ACES_TONEMAP == 1
 			//ACES - Credit to Krzysztof Narkowicz
 			c *= 0.6;
 			c *= (2.51 * c + 0.03) / (c * (2.43 * c + 0.59) + 0.14);
 		#else
-			//Lottes
-			c /= 1.0 + (1.0 - rcp(_HDR_TONEMAP)) * Luminance_RGB(c);
+			//Reinhard Extended
+			c *= (1.0 + c / (_HDR_TONEMAP * _HDR_TONEMAP)) / (1.0 + c);
 		#endif
 		return Saturate_RGB(c);
 	}
 	float3 TonemapInv(float3 c)
 	{
-		#if HDR_ACES_TONEMAP == 1
+		#if !defined(HDR_ACES_TONEMAP) || HDR_ACES_TONEMAP == 1
 			//ACES
 			c = (sqrt(-10127.0 * (c * c) + 13702.0 * c + 9.0) + 59.0 * c - 3.0) / (502.0 - 486.0 * c);
 			c /= 0.6;
 		#else
-			//Lottes
-			c /= 1.0 - (1.0 - rcp(_HDR_TONEMAP)) * Luminance_RGB(c);
+			//Reinhard Extended
+			float a = _HDR_TONEMAP * _HDR_TONEMAP;
+			float3 b = (c - 1.0) * a;
+			c = 0.5 * (sqrt((b * b) + 4.0 * c * a) + b);
 		#endif
 		return c;
 	}

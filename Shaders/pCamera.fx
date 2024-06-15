@@ -168,7 +168,7 @@ uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Bloom amount";
 	ui_tooltip = "Amount of blooming to apply";
 	ui_category = "Bloom";
-> = 0.2;
+> = 0.16;
 uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 1.0; ui_max = 5.0;
 	ui_label = "Bloom curve";

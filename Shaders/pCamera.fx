@@ -168,7 +168,7 @@ uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Bloom amount";
 	ui_tooltip = "Amount of blooming to apply";
 	ui_category = "Bloom";
-> = 0.225;
+> = 0.2;
 uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 1.0; ui_max = 5.0;
 	ui_label = "Bloom curve";
@@ -352,6 +352,11 @@ float3 SampleLinear(float2 texcoord, bool use_tonemap)
 float3 RedoTonemap(float3 c)
 {
 	return (Oklab::IS_HDR) ? c : Oklab::Tonemap(c);
+}
+
+float3 ClipBlacks(float3 c)
+{
+    return float3(max(c.r, 0), max(c.g, 0), max(c.b, 0));
 }
 
 float3 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction, bool sample_linear)
@@ -788,7 +793,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		gauss_noise = (NoiseType == 0) ? gauss_noise.rrr : gauss_noise;
 
 		float weight = (NoiseStrength * NoiseStrength) * NOISE_CURVE / (luminance * (1.0 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
-		color.rgb = Oklab::Saturate_RGB(color.rgb + gauss_noise * weight);
+		color.rgb = ClipBlacks(color.rgb + gauss_noise * weight);
 	}
 
 	//Auto exposure

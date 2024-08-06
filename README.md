@@ -11,6 +11,7 @@ A high performance all-in-one shader with many common lens and camera effects.
 - Gaussian blur
 - Depth of field
 - Bloom
+- Lens flare
 - Lens dirt
 - Fisheye
 - Glass imperfections

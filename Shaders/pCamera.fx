@@ -3,7 +3,7 @@
 // A high performance all-in-one shader with many common lens and camera effects.
 ///////////////////////////////////////////////////////////////////////////////////
 
-#define P_OKLAB_VERSION_REQUIRE 102
+#define P_OKLAB_VERSION_REQUIRE 103
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
@@ -195,8 +195,10 @@ uniform float BloomGamma < __UNIFORM_SLIDER_FLOAT1
 //Lens flare
 #if BUFFER_COLOR_SPACE > 1
 	static const float LFLARE_CURVE_DEFAULT = 0.4;
+	static const float LFLARE_STRENGTH_DEFAULT = 0.5;
 #else
 	static const float LFLARE_CURVE_DEFAULT = 1.0;
+	static const float LFLARE_STRENGTH_DEFAULT = 0.2;
 #endif
 uniform bool UseLF <
 	ui_type = "bool";
@@ -210,16 +212,23 @@ uniform bool GLocalMask <
 	ui_tooltip = "Only apply flaring when looking right at light sources";
 	ui_category = "Lens Flare";
 > = false;
-uniform float GhostStrength < __UNIFORM_SLIDER_FLOAT1
+uniform float LFStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
-	ui_label = "Ghosting amount";
-	ui_tooltip = "Amount of ghosting to apply";
+	ui_label = "Lens flare amount";
+	ui_tooltip = "Amount of flaring to apply";
 	ui_category = "Lens Flare";
-> = 0.15;
+> = LFLARE_STRENGTH_DEFAULT;
 #ifndef ENABLE_ADVANCED_LENS_FLARE_SETTINGS
 	#define ENABLE_ADVANCED_LENS_FLARE_SETTINGS 0
 #endif
 #if ENABLE_ADVANCED_LENS_FLARE_SETTINGS
+	uniform float GhostStrength < __UNIFORM_SLIDER_FLOAT1
+		ui_min = 0.0; ui_max = 1.0;
+		ui_label = "Ghosting amount";
+		ui_tooltip = "Amount of ghosting to apply";
+		ui_category = "Lens Flare";
+	> = 0.3;
+
 	//Ghost 1
 	uniform float4 GColor1 < __UNIFORM_COLOR_FLOAT4
 		ui_label = "Color 1";
@@ -316,25 +325,31 @@ uniform float GhostStrength < __UNIFORM_SLIDER_FLOAT1
 		ui_tooltip = "Size of ghost 8";
 		ui_category = "Lens Flare";
 	> = -0.1;
+
+	uniform float HaloStrength < __UNIFORM_SLIDER_FLOAT1
+		ui_min = 0.0; ui_max = 1.0;
+		ui_label = "Halo amount";
+		ui_tooltip = "Amount of haloing to apply";
+		ui_category = "Lens Flare";
+	> = 0.2;
+	uniform float HaloRadius < __UNIFORM_SLIDER_FLOAT1
+		ui_min = 0.0; ui_max = 0.8;
+		ui_label = "Halo radius";
+		ui_tooltip = "Radius of the halo";
+		ui_category = "Lens Flare";
+	> = 0.5;
+	uniform float HaloWidth < __UNIFORM_SLIDER_FLOAT1
+		ui_min = 0.0; ui_max = 1.0;
+		ui_label = "Halo width";
+		ui_tooltip = "Width of the halo";
+		ui_category = "Lens Flare";
+	> = 0.5;
+#else
+	static const float GhostStrength = 0.3;
+	static const float HaloStrength = 0.2;
+	static const float HaloRadius = 0.5;
+	static const float HaloWidth = 0.5;
 #endif
-uniform float HaloStrength < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 1.0;
-	ui_label = "Halo amount";
-	ui_tooltip = "Amount of haloing to apply";
-	ui_category = "Lens Flare";
-> = 0.1;
-uniform float HaloRadius < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 0.8;
-	ui_label = "Halo radius";
-	ui_tooltip = "Radius of the halo";
-	ui_category = "Lens Flare";
-> = 0.5;
-uniform float HaloWidth < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 1.0;
-	ui_label = "Halo width";
-	ui_tooltip = "Width of the halo";
-	ui_category = "Lens Flare";
-> = 0.5;
 uniform float GlareStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
 	ui_label = "Glare amount";
@@ -912,7 +927,7 @@ vs2ps VS_Bloom(uint id : SV_VertexID)
 vs2ps VS_BloomLF(uint id : SV_VertexID)
 {   
 	vs2ps o = vs_basic(id);
-	if (BloomStrength == 0.0 && DirtStrength == 0.0 && (!UseLF || (GhostStrength == 0.0 && HaloStrength == 0.0 && GlareStrength == 0.0)))
+	if (BloomStrength == 0.0 && DirtStrength == 0.0 && (!UseLF || ((LFStrength == 0.0 || (GhostStrength == 0.0 && HaloStrength == 0.0)) && GlareStrength == 0.0)))
 	{
 		o.vpos.xy = 0.0;
 	}
@@ -922,7 +937,7 @@ vs2ps VS_BloomLF(uint id : SV_VertexID)
 vs2ps VS_Ghosts(uint id : SV_VertexID)
 {   
 	vs2ps o = vs_basic(id);
-	if (!UseLF || (GhostStrength == 0.0 && HaloStrength == 0.0 && GlareStrength == 0.0))
+	if (!UseLF || ((LFStrength == 0.0 || (GhostStrength == 0.0 && HaloStrength == 0.0)) && GlareStrength == 0.0))
 	{
 		o.vpos.xy = 0.0;
 	}
@@ -1186,7 +1201,7 @@ float3 GhostsPass(vs2ps o) : COLOR
 		color += s.rgb * s.a * weight * (HaloStrength*HaloStrength);
 	}
 
-	return color;
+	return color * (LFStrength*LFStrength);
 }
 float3 GlarePass(vs2ps o) : COLOR
 {
@@ -1265,11 +1280,11 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	//Bloom
 	if (BloomStrength != 0.0)
 	{
-		color += (BloomStrength * BloomStrength) * tex2D(spBloomTex0, texcoord).rgb;
+		color += (BloomStrength*BloomStrength) * tex2D(spBloomTex0, texcoord).rgb;
 	}
 
 	//Lens flare
-	if (UseLF && (GlareStrength != 0.0 || GhostStrength != 0.0 || HaloStrength != 0.0))
+	if (UseLF && (GlareStrength != 0.0 || (LFStrength != 0.0 && (GhostStrength != 0.0 || HaloStrength != 0.0))))
 	{
 		color += tex2D(spFlareTex, texcoord).rgb;
 	}

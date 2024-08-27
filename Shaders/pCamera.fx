@@ -3,7 +3,7 @@
 // A high performance all-in-one shader with many common lens and camera effects.
 ///////////////////////////////////////////////////////////////////////////////////
 
-#define P_OKLAB_VERSION_REQUIRE 103
+#define P_OKLAB_VERSION_REQUIRE 104
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
@@ -968,7 +968,7 @@ float2 StoragePass(vs2ps o) : COLOR
 	data.x = lerp(data.x, o.texcoord.w, min(pUtils::FrameTime / (DOFFocusSpeed * 500.0 + EPSILON), 1.0));
 
 	//Sample AE
-	data.y = lerp(data.y, max(Oklab::get_Adapted_Luminance_RGB(SampleLinear(o.texcoord.xy).rgb, AE_RANGE), AE_MIN_BRIGHTNESS), min(pUtils::FrameTime / (AESpeed * 1000.0 + EPSILON), 1.0));
+	data.y = lerp(data.y, max(Oklab::get_Adapted_Luminance_Oklab(SampleLinear(o.texcoord.xy), AE_RANGE), AE_MIN_BRIGHTNESS), min(pUtils::FrameTime / (AESpeed * 1000.0 + EPSILON), 1.0));
 	return data.xy;
 }
 float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COLOR
@@ -1198,7 +1198,7 @@ float3 GhostsPass(vs2ps o) : COLOR
 		weight = 1.0 - min(rcp(HaloWidth + EPSILON) * length(0.5 - halo_vector), 1.0);
 		weight = pow(abs(weight), 5.0);
 
-		s = SampleCA(spFlareSrcTex halo_vector, LensFlareCA);
+		s = SampleCA(spFlareSrcTex, halo_vector, LensFlareCA);
 		color += s.rgb * s.a * weight * (HaloStrength*HaloStrength);
 	}
 

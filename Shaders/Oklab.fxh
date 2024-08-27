@@ -20,7 +20,7 @@
 #endif
 
 #ifndef _P_OKLAB_VERSION
-	#define _P_OKLAB_VERSION 103
+	#define _P_OKLAB_VERSION 104
 #endif
 
 #if _P_OKLAB_VERSION < P_OKLAB_VERSION_REQUIRE
@@ -285,6 +285,10 @@ namespace Oklab
 	float get_Adapted_Luminance_RGB(float3 c, float range)
 	{
 		return min(2.0 * get_Luminance_RGB(c) / HDR_PAPER_WHITE, range);
+	}
+	float get_Adapted_Luminance_Oklab(float3 c, float range)
+	{
+		return min(2.0 * c.r / HDR_PAPER_WHITE, range);
 	}
 
 

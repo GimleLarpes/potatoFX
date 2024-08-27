@@ -351,6 +351,7 @@ uniform float LFStrength < __UNIFORM_SLIDER_FLOAT1
 	static const float HaloStrength = 0.2;
 	static const float HaloRadius = 0.5;
 	static const float HaloWidth = 0.5;
+	static const float LensFlareCA = 1.0;
 #endif
 uniform float GlareStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
@@ -370,12 +371,14 @@ uniform float LensFlareCurve < __UNIFORM_SLIDER_FLOAT1
 	ui_tooltip = "What parts of the image produce lens flares";
 	ui_category = "Lens Flare";
 > = LFLARE_CURVE_DEFAULT;
-uniform float LensFlareCA < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 2.0;
-	ui_label = "Lens flare CA";
-	ui_tooltip = "Lens flare chromatic aberration";
-	ui_category = "Lens Flare";
-> = 1.0;
+#if ENABLE_ADVANCED_LENS_FLARE_SETTINGS
+	uniform float LensFlareCA < __UNIFORM_SLIDER_FLOAT1
+		ui_min = 0.0; ui_max = 2.0;
+		ui_label = "Lens flare CA";
+		ui_tooltip = "Lens flare chromatic aberration";
+		ui_category = "Lens Flare";
+	> = 1.0;
+#endif
 
 //Vignette
 uniform float VignetteStrength < __UNIFORM_SLIDER_FLOAT1

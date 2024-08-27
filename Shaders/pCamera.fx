@@ -570,8 +570,8 @@ float3 SampleLinear(float2 texcoord)
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
 	color = (UseApproximateTransforms)
-		? Oklab::Fast_DisplayFormat_to_Linear(color)
-		: Oklab::DisplayFormat_to_Linear(color);
+		? Oklab::Fast_DisplayFormat_to_Oklab(color)
+		: Oklab::DisplayFormat_to_Oklab(color);
 	return color;
 }
 float3 SampleLinear(float2 texcoord, bool use_tonemap)
@@ -585,8 +585,7 @@ float3 SampleLinear(float2 texcoord, bool use_tonemap)
 	{
 		color = Oklab::TonemapInv(color);
 	}
-    
-	return color;
+	return Oklab::RGB_to_Oklab(color);
 }
 
 float4 SampleCA(sampler s, float2 texcoord, float strength)
@@ -1199,7 +1198,7 @@ float3 GhostsPass(vs2ps o) : COLOR
 		weight = 1.0 - min(rcp(HaloWidth + EPSILON) * length(0.5 - halo_vector), 1.0);
 		weight = pow(abs(weight), 5.0);
 
-		s = tex2D(spFlareSrcTex, halo_vector);
+		s = SampleCA(spFlareSrcTex halo_vector, LensFlareCA);
 		color += s.rgb * s.a * weight * (HaloStrength*HaloStrength);
 	}
 
@@ -1243,7 +1242,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		bump = bump * 2.0 - 1.0;
 		texcoord += bump * TEXEL_SIZE * (GeoIStrength * GeoIStrength);
 	}
-	float3 color = SampleLinear(texcoord).rgb;
+	float3 color = SampleLinear(texcoord).rgb; //THIS IS NOW IN OKLAB
     
 	//Blur
 	float blur_mix = min((4 - GaussianQuality) * BlurStrength, 1.0);
@@ -1260,7 +1259,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color = lerp(color, RedoTonemap(dof_data.rgb), dof_mix);
 	}
 
-	//Chromatic aberration
+	//Chromatic aberration - THIS IS NOT DONE
 	[branch]
 	if (CAStrength != 0.0)
 	{
@@ -1271,7 +1270,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		color.b = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, texcoord + step_length * influence.b).rgb).b : lerp(SampleLinear(texcoord + step_length * influence.b).b, RedoTonemap(tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).rgb).b, blur_mix);
 	}
 
-	//Dirt
+	//Dirt - CONVERT TEXTURE TO Oklab???
 	[branch]
 	if (DirtStrength != 0.0)
 	{
@@ -1289,7 +1288,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	if (UseLF && (GlareStrength != 0.0 || (LFStrength != 0.0 && (GhostStrength != 0.0 || HaloStrength != 0.0))))
 	{
 		color += tex2D(spFlareTex, texcoord).rgb;
-	}
+	}//Underneath is fine
 
 	//Vignette
 	if (VignetteStrength != 0.0)
@@ -1303,7 +1302,8 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	if (NoiseStrength != 0.0)
 	{
 		static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
-		float luminance = Oklab::get_Luminance_RGB(color);
+		float luminance = color.r;
+		color = Oklab::Oklab_to_RGB(color);
 
 		//White noise
 		float noise1 = pUtils::wnoise(texcoord_clean, float2(6.4949, 39.116));
@@ -1321,12 +1321,14 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 
 		float weight = (NoiseStrength * NoiseStrength) * NOISE_CURVE / (luminance * (1.0 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
 		color.rgb = ClipBlacks(color.rgb + gauss_noise * weight);
+
+		color = Oklab::RGB_to_Oklab(color);
 	}
 
 	//Auto exposure
 	if (UseAE)
 	{
-		color *= lerp(1.0, AETarget / tex2Dlod(spStorageTex, float4(AEPx, AEPy, 0.0, STORAGE_TEX_MIPLEVELS - 1)).y, AEGain);
+		color.rgb *= lerp(1.0, AETarget / tex2Dlod(spStorageTex, float4(AEPx, AEPy, 0.0, STORAGE_TEX_MIPLEVELS - 1)).y, AEGain);
 	}
     
 	//DEBUG stuff
@@ -1334,7 +1336,7 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	{
 		if (pow(abs(texcoord_clean.x - DOFFocusPx) * BUFFER_ASPECT_RATIO, 2.0) + pow(abs(texcoord_clean.y - DOFFocusPy), 2.0) < 0.0001)
 		{
-			color.rgb = float3(1.0, 0.0, 0.0) * INVNORM_FACTOR;
+			color.rgb = float3(1.0, 0.5, 0.5) * INVNORM_FACTOR;
 		}
 	}
 	if (VignetteDebug)
@@ -1342,18 +1344,17 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 		float vignette_distance = length(radiant_vector * float2(rcp(VignetteWidth), 1.0));
 		if (abs(vignette_distance - VignetteInnerRadius) < 0.001) //Inner radius
 		{
-			color.rgb = float3(1.0, 0.0, 0.0) * INVNORM_FACTOR;
+			color.rgb = float3(1.0, 0.5, 0.5) * INVNORM_FACTOR;
 		}
 		if (abs(vignette_distance - VignetteOuterRadius) < 0.0015) //Outer radius
 		{
-			color.rgb = float3(1.0, 0.0, 0.0) * INVNORM_FACTOR;
+			color.rgb = float3(1.0, 0.5, 0.5) * INVNORM_FACTOR;
 		}
 	}
 
-	if (!Oklab::IS_HDR) { color = Oklab::Saturate_RGB(color); }
 	color = (UseApproximateTransforms)
-		? Oklab::Fast_Linear_to_DisplayFormat(color)
-		: Oklab::Linear_to_DisplayFormat(color);
+		? Oklab::Fast_Oklab_to_DisplayFormat(color)
+		: Oklab::Oklab_to_DisplayFormat(color);
 	return color.rgb;
 }
 
@@ -1373,26 +1374,26 @@ technique Camera <ui_tooltip =
 
 	pass
 	{
-		VertexShader = VS_Blur; PixelShader = GaussianBlurPass1; RenderTarget = pBokehBlurTex;
+		VertexShader = VS_Blur; PixelShader = GaussianBlurPass1; RenderTarget = pBokehBlurTex; //This should take in RGB and output Oklab
 	}
 	pass
 	{
-		VertexShader = VS_Blur; PixelShader = GaussianBlurPass2; RenderTarget = pGaussianBlurTex;
-	}
-
-
-	pass
-	{
-		VertexShader = VS_DOF; PixelShader = BokehBlurPass; RenderTarget = pBokehBlurTex;
+		VertexShader = VS_Blur; PixelShader = GaussianBlurPass2; RenderTarget = pGaussianBlurTex; //Oklab all the way through
 	}
 
 
 	pass
 	{
-		VertexShader = VS_BloomLF; PixelShader = HighPassFilter; RenderTarget = pBloomTex0;
+		VertexShader = VS_DOF; PixelShader = BokehBlurPass; RenderTarget = pBokehBlurTex; //Output Oklab, but input can be either Oklab or RGB
+	}
+
+
+	pass
+	{
+		VertexShader = VS_BloomLF; PixelShader = HighPassFilter; RenderTarget = pBloomTex0; //Output Oklab, but input can be either Oklab or RGB
 	}
     
-	//Bloom downsample and upsample passes
+	//Bloom downsample and upsample passes - Oklab all the way through
 	#define BLOOM_DOWN_PASS(i) pass { VertexShader = VS_Bloom; PixelShader = BloomDownS##i; RenderTarget = pBloomTex##i; }
 	#define BLOOM_UP_PASS(i) pass { VertexShader = VS_Bloom; PixelShader = BloomUpS##i; RenderTarget = pBloomTex##i; ClearRenderTargets = FALSE; BlendEnable = TRUE; BlendOp = 1; SrcBlend = 1; DestBlend = 9; }
 
@@ -1404,14 +1405,14 @@ technique Camera <ui_tooltip =
 	//Lens flare
 	pass
 	{
-		VertexShader = VS_Ghosts; PixelShader = CAPass; RenderTarget = pFlareSrcTex;
+		VertexShader = VS_Ghosts; PixelShader = CAPass; RenderTarget = pFlareSrcTex; //Output Oklab, but input can be either Oklab or RGB
 	}
 	pass
 	{
-		VertexShader = VS_Ghosts; PixelShader = GhostsPass; RenderTarget = pFlareTex;
+		VertexShader = VS_Ghosts; PixelShader = GhostsPass; RenderTarget = pFlareTex; //Oklab all the way through
 	}
 
-	//Blur lens flare
+	//Blur lens flare - Oklab all the way through
 	#define FLARE_DOWN_PASS(i) pass { VertexShader = VS_Ghosts; PixelShader = FlareDownS##i; RenderTarget = pBloomTex##i; }
 	#define FLARE_UP_PASS(i) pass { VertexShader = VS_Ghosts; PixelShader = FlareUpS##i; RenderTarget = pBloomTex##i; }
 	#define FLARE_UP_PASS_FINAL(i) pass { VertexShader = VS_Ghosts; PixelShader = FlareUpS##i; RenderTarget = pFlareTex; }

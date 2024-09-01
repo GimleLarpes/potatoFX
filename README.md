@@ -20,6 +20,7 @@ A high performance all-in-one shader with many common lens and camera effects.
 - Noise
     - Film-like noise and digital chroma noise
 - Auto exposure
+    - Matrix metering and spot metering
 
 ## pColorNoise
 Generates gaussian chroma noise to simulate amplifier noise in digital cameras.

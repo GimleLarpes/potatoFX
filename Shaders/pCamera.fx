@@ -1001,9 +1001,9 @@ float4 BokehBlurPass(vs2ps o) : COLOR
 float4 HighPassFilter(vs2ps o) : COLOR
 {
 	float3 color = (UseDOF) ? tex2D(spBokehBlurTex, o.texcoord.xy).rgb : (BlurStrength == 0.0) ? SampleLinear(o.texcoord.xy, true).rgb : tex2D(spGaussianBlurTex, o.texcoord.xy).rgb;
-	float adapted_luminance = Oklab::get_Adapted_Luminance_RGB(RedoTonemap(color), 1.0);
+	float adapted_luminance = Oklab::get_Adapted_Luminance_Oklab(RedoTonemap(color), 1.0);
 
-	float mask = pow(abs(Oklab::get_Adapted_Luminance_RGB(color, Oklab::INVNORM_FACTOR) / (1.0 + Oklab::INVNORM_FACTOR)), LensFlareCurve*LensFlareCurve + EPSILON);
+	float mask = pow(abs(Oklab::get_Adapted_Luminance_Oklab(color, Oklab::INVNORM_FACTOR) / (1.0 + Oklab::INVNORM_FACTOR)), LensFlareCurve*LensFlareCurve + EPSILON);
 
 	color *= pow(abs(adapted_luminance), BloomCurve*BloomCurve);
 	return float4(color, mask);
@@ -1180,7 +1180,7 @@ float3 GhostsPass(vs2ps o) : COLOR
 				}
 
 				float4 s = tex2D(spFlareSrcTex, ghost_vector + 0.5);
-            	color += s.rgb * s.a * GHOST_COLORS[i].rgb * GHOST_COLORS[i].a * weight;
+            	color += s.rgb * s.a * Oklab::RGB_to_Oklab(GHOST_COLORS[i].rgb).rgb * GHOST_COLORS[i].a * weight;
         	}
     	}
 
@@ -1263,10 +1263,10 @@ float3 CameraPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 	[branch]
 	if (CAStrength != 0.0)
 	{
-		float3 influence = float3(-0.04, 0.0, 0.03);
+		float3 influence = float3(0.0, -0.04, 0.03);
 
 		float2 step_length = CAStrength * radiant_vector;
-		color.r = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, texcoord + step_length * influence.r).rgb).r : lerp(SampleLinear(texcoord + step_length * influence.r).r, RedoTonemap(tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).rgb).r, blur_mix);
+		color.g = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, texcoord + step_length * influence.g).rgb).g : lerp(SampleLinear(texcoord + step_length * influence.g).g, RedoTonemap(tex2D(spGaussianBlurTex, texcoord + step_length * influence.g).rgb).g, blur_mix);
 		color.b = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, texcoord + step_length * influence.b).rgb).b : lerp(SampleLinear(texcoord + step_length * influence.b).b, RedoTonemap(tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).rgb).b, blur_mix);
 	}
 

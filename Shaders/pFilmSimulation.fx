@@ -1,6 +1,9 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // pFilmSimulation.fx by Gimle Larpes
 // A high performance shader for artistic film simulations using HaldCLUTs.
+//
+// Once source of compatible CLUTs is:
+//   https://github.com/cedeber/hald-clut/tree/master/HaldCLUT/Film%20Simulation
 ///////////////////////////////////////////////////////////////////////////////////
 
 #define P_OKLAB_VERSION_REQUIRE 103
@@ -12,16 +15,35 @@
 #if !defined(__RESHADE__) || __RESHADE__ < 50900
 	#error "Outdated ReShade installation - ReShade 5.9+ is required"
 #endif
-#if __RENDERER__ == 0x9000
-	#error "This effects file is not compatible with DirectX 9"
-#endif
 
 
 static const float PI = pUtils::PI;
 static const float EPSILON = pUtils::EPSILON;
 
 
-//Bloom
+//LUT
+uniform float CLUTIntensity < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+	ui_label = "CLUT Intensity";
+	ui_tooltip = "Blends between original color and the corrected color";
+	ui_category = "Hald CLUT";
+> = 1.0;
+
+//Grain
+uniform int GrainISO < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 12; ui_max = 3200;
+	ui_label = "ISO";
+	ui_tooltip = "Film speed";
+	ui_category = "Grain";
+> = 100;
+uniform float GrainIntensity < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+	ui_label = "Grain fineness";
+	ui_tooltip = "How fine the grain is, inversely proportional\nto the sensitivity of the emulsion";
+	ui_category = "Grain";
+> = 0.5;
+
+//Halation
 #if BUFFER_COLOR_SPACE > 1
 	static const float BLOOM_CURVE_DEFAULT = 1.0;
 	static const float BLOOM_GAMMA_DEFAULT = 1.0;
@@ -35,42 +57,28 @@ static const float EPSILON = pUtils::EPSILON;
 #endif
 uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
-	ui_label = "Bloom amount";
-	ui_tooltip = "Amount of blooming to apply";
-	ui_category = "Bloom";
-> = 0.18;
+	ui_label = "Halation amount";
+	ui_tooltip = "Amount of light bleed from bright objects";
+	ui_category = "Halation";
+> = 0.4;
 uniform float BloomRadius < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.1; ui_max = 1.0;
-	ui_label = "Bloom radius";
-	ui_tooltip = "Controls radius of bloom";
-	ui_category = "Bloom";
-> = 0.95;
+	ui_label = "Halation radius";
+	ui_tooltip = "Controls radius of halation";
+	ui_category = "Halation";
+> = 0.5;
 uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 1.0; ui_max = 5.0;
-	ui_label = "Bloom curve";
-	ui_tooltip = "What parts of the image to apply bloom to\n1 = linear      5 = brightest parts only";
-	ui_category = "Bloom";
+	ui_label = "Halation curve";
+	ui_tooltip = "What parts of the image have light bleed\n1 = linear      5 = brightest parts only";
+	ui_category = "Halation";
 > = BLOOM_CURVE_DEFAULT;
 uniform float BloomGamma < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.1; ui_max = 2;
-	ui_label = "Bloom gamma";
-	ui_tooltip = "Controls shape of bloom";
-	ui_category = "Bloom";
+	ui_label = "Halation gamma";
+	ui_tooltip = "Controls shape of Halation";
+	ui_category = "Halation";
 > = BLOOM_GAMMA_DEFAULT;
-
-//Grain
-uniform int GrainISO < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 12; ui_max = 12800;
-	ui_label = "ISO";
-	ui_tooltip = "Film speed";
-	ui_category = "Grain";
-> = 100;
-uniform float GrainIntensity < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 1.0;
-	ui_label = "Grain fineness";
-	ui_tooltip = "How fine the grain is";
-	ui_category = "Grain";
-> = 0.5;
 
 
 //Performance
@@ -81,7 +89,7 @@ uniform bool UseApproximateTransforms <
 	ui_category = "Performance";
 > = false;
 
-static const float LUT_WhitePoint = 1.0; //Apply CLUT to entire range
+static const float LUT_WhitePoint = 1.0; //Apply CLUT to entire range - modify LUT function to make this var redundant
 #ifndef cLUT_TextureName
 	#define cLUT_TextureName "lut.png"
 #endif
@@ -98,12 +106,18 @@ texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_
 sampler spBloomTex0 { Texture = pBloomTex0; AddressU = MIRROR; AddressV = MIRROR; };
 texture pBloomTex1 < pooled = true; > { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = RGBA16F; };
 sampler spBloomTex1 { Texture = pBloomTex1; AddressU = MIRROR; AddressV = MIRROR; };
+#if BUFFER_HEIGHT > 1024
 texture pBloomTex2 < pooled = true; > { Width = BUFFER_WIDTH/8; Height = BUFFER_HEIGHT/8; Format = RGBA16F; };
 sampler spBloomTex2 { Texture = pBloomTex2; AddressU = MIRROR; AddressV = MIRROR; };
+#if BUFFER_HEIGHT > 2048
 texture pBloomTex3 < pooled = true; > { Width = BUFFER_WIDTH/16; Height = BUFFER_HEIGHT/16; Format = RGBA16F; };
 sampler spBloomTex3 { Texture = pBloomTex3; AddressU = MIRROR; AddressV = MIRROR; };
+#if BUFFER_HEIGHT > 4096
 texture pBloomTex4 < pooled = true; > { Width = BUFFER_WIDTH/32; Height = BUFFER_HEIGHT/32; Format = RGBA16F; };
 sampler spBloomTex4 { Texture = pBloomTex3; AddressU = MIRROR; AddressV = MIRROR; };
+#endif
+#endif
+#endif
 
 
 ////Functions
@@ -222,6 +236,7 @@ float4 HQUpSample(sampler s, float2 texcoord, float radius)
 
 float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Marty McFly
 {
+	// TODO: FIX FUNCTION TO WORK WITH CLUTS FROM https://github.com/cedeber/hald-clut/tree/master/HaldCLUT/Film%20Simulation
 	static const float EXPANSION_FACTOR = Oklab::INVNORM_FACTOR;
 	float3 LUT_coord = c / EXPANSION_FACTOR / LUT_WhitePoint;
 
@@ -238,7 +253,7 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Marty McFly
 	
 		float lerp_factor = frac(LUT_coord.z);
 		LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
-		c = lerp(tex2D(sLUT, LUT_coord.xy).rgb, tex2D(sLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
+		c = lerp(tex2D(scLUT, LUT_coord.xy).rgb, tex2D(scLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
 
 		if (bounds > 0.9 && LUT_WhitePoint != 1.0) //Fade out LUT to avoid banding
 		{
@@ -271,7 +286,7 @@ vs2ps vs_basic(const uint id)
 vs2ps VS_Bloom(uint id : SV_VertexID)
 {   
 	vs2ps o = vs_basic(id);
-	if (BloomStrength == 0.0 && DirtStrength == 0.0)
+	if (BloomStrength == 0.0)
 	{
 		o.vpos.xy = 0.0;
 	}
@@ -283,27 +298,28 @@ vs2ps VS_Bloom(uint id : SV_VertexID)
 //Bloom
 float4 HighPassFilter(vs2ps o) : COLOR
 {
-	float3 color = (UseDOF) ? tex2D(spBokehBlurTex, o.texcoord.xy).rgb : (BlurStrength == 0.0) ? SampleLinear(o.texcoord.xy, true).rgb : tex2D(spGaussianBlurTex, o.texcoord.xy).rgb;
+	float3 color = SampleLinear(o.texcoord.xy, true).rgb;
 	float adapted_luminance = Oklab::get_Adapted_Luminance_RGB(RedoTonemap(color), 1.0);
 
-	float mask = pow(abs(Oklab::get_Adapted_Luminance_RGB(color, Oklab::INVNORM_FACTOR) / (1.0 + Oklab::INVNORM_FACTOR)), LensFlareCurve*LensFlareCurve + EPSILON);
-
 	color *= pow(abs(adapted_luminance), BloomCurve*BloomCurve);
-	return float4(color, mask);
+	return float4(color, 1.0); //Scuffed
 }
 //Downsample
 float4 BloomDownS1(vs2ps o) : COLOR
 {
 	return HQDownSampleKA(spBloomTex0, o.texcoord.xy);
 }
+#if BUFFER_HEIGHT > 1024
 float4 BloomDownS2(vs2ps o) : COLOR
 {
 	return HQDownSample(spBloomTex1, o.texcoord.xy);
 }
+#if BUFFER_HEIGHT > 2048
 float4 BloomDownS3(vs2ps o) : COLOR
 {
 	return HQDownSample(spBloomTex2, o.texcoord.xy);
 }
+#if BUFFER_HEIGHT > 4096
 float4 BloomDownS4(vs2ps o) : COLOR
 {
 	return HQDownSample(spBloomTex3, o.texcoord.xy);
@@ -313,14 +329,17 @@ float4 BloomUpS3(vs2ps o) : COLOR
 {
 	return BloomRadius * HQUpSample(spBloomTex4, o.texcoord.xy, BloomRadius);
 }
+#endif
 float4 BloomUpS2(vs2ps o) : COLOR
 {
 	return BloomRadius * HQUpSample(spBloomTex3, o.texcoord.xy, BloomRadius);
 }
+#endif
 float4 BloomUpS1(vs2ps o) : COLOR
 {
 	return BloomRadius * HQUpSample(spBloomTex2, o.texcoord.xy, BloomRadius);
 }
+#endif
 float4 BloomUpS0(vs2ps o) : COLOR
 {
 	float4 color = BloomRadius * HQUpSample(spBloomTex1, o.texcoord.xy, BloomRadius);
@@ -338,19 +357,22 @@ float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord)
 {
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+	float3 color = SampleLinear(texcoord).rgb;
 	
-	////Effects
+	////Effects - TODO: IMPLEMENT FILM RESPONSE CURVE
 	//Bloom
 	if (BloomStrength != 0.0)
 	{
 		color += (BloomStrength*BloomStrength) * tex2D(spBloomTex0, texcoord).rgb;
 	}
 
-	//Noise - OPTIMIZE
+	//Noise
 	[branch]
 	if (GrainIntensity != 0.0)
 	{
 		static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
+		static const float3 CHANNEL_NOISE = float3(1.0, 1.0, 1.0);
+		//Film sensitivity to color channels, try reading from LUT? - If feeling cursed, store in texcoord.zw and vpos.z (this would break DX9)
 		float luminance = Oklab::get_Luminance_RGB(color);
 
 		//White noise
@@ -363,16 +385,15 @@ float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord)
 		float theta1 = 2.0 * PI * noise2;
 		float theta2 = 2.0 * PI * noise3;
 
-		//Sensor sensitivity to color channels: https://www.1stvision.com/cameras/AVT/dataman/ibis5_a_1300_8.pdf
-		float3 gauss_noise = float3(r * cos(theta1) * 1.33, r * sin(theta1) * 1.25, r * cos(theta2) * 2.0);
-		gauss_noise = gauss_noise.rrr//(NoiseType == 0) ? gauss_noise.rrr : gauss_noise;
-
-		float weight = (GrainISO * GrainIntensity * 0.0001) * NOISE_CURVE / (luminance * (1.0 + rcp(INVNORM_FACTOR)) + 2.0); //Multiply luminance to simulate a wider dynamic range
+		float3 gauss_noise = float3(r*cos(theta1) * CHANNEL_NOISE[0], r*sin(theta1) * CHANNEL_NOISE[1], r*cos(theta2) * CHANNEL_NOISE[2]);
+		
+		float weight = (sqrt(GrainISO / 100) * GrainIntensity * 0.01) * NOISE_CURVE / (luminance * (1.0 + rcp(INVNORM_FACTOR)) + 1.0); //Multiply luminance to simulate a wider dynamic range
 		color.rgb = ClipBlacks(color.rgb + gauss_noise * weight);
 	}
 
 	//LUT
-	color = Apply_LUT(Oklab::Saturate_RGB(color)); // is the saturate requred? - Is log-behaviour baked into the cluts or how will it be one?
+	// is the saturate requred? - Is log-behaviour baked into the cluts or how will it be one?
+	//color = lerp(color, Apply_LUT(Oklab::Saturate_RGB(color)), CLUTIntensity);
 
 	if (!Oklab::IS_HDR) { color = Oklab::Saturate_RGB(color); }
 	color = (UseApproximateTransforms)
@@ -382,12 +403,12 @@ float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord)
 }
 
 technique FilmSimulation <ui_tooltip = 
-"A high performance shader for artistic film simulations using HaldCLUTs.\n\n"
+"A high performance shader for artistic film simulations using Hald CLUTs.\n\n"
 "(HDR compatible)";>
 {
 	pass
 	{
-		VertexShader = VS_BloomLF; PixelShader = HighPassFilter; RenderTarget = pBloomTex0;
+		VertexShader = VS_Bloom; PixelShader = HighPassFilter; RenderTarget = pBloomTex0;
 	}
     
 	//Bloom downsample and upsample passes

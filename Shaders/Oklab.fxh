@@ -76,9 +76,16 @@ namespace Oklab
 	#endif
 	static const float HDR_PAPER_WHITE = HDR_PAPER_WHITE_NITS / SDR_WHITEPOINT;
 
-	#ifndef _HDR_TONEMAP
-		#define _HDR_TONEMAP 3.0
+	//Tonemap Range
+	#if !defined(HDR_ACES_TONEMAP) || HDR_ACES_TONEMAP == 1
+		#undef _HDR_TONEMAP
+		#define _HDR_TONEMAP 10.0
+	#else
+		#ifndef _HDR_TONEMAP
+			#define _HDR_TONEMAP 3.0
+		#endif
 	#endif
+	static const float HDR_TONEMAP_RANGE = _HDR_TONEMAP;
 
     
 	//Invnorm factor

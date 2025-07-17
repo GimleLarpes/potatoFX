@@ -1293,39 +1293,38 @@ float3 CameraPass(vs2ps o) : SV_Target
 {
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
 	static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-	float2 texcoord = o.texcoord.xy; //TODO: Replace texcoord with o.texcoord
-	float2 radiant_vector = texcoord.xy - 0.5;
-	float2 texcoord_clean = texcoord.xy;
+	float2 radiant_vector = o.texcoord.xy - 0.5;
+	float2 texcoord_clean = o.texcoord.xy;
 	
 	////Effects
 	//Fisheye
 	if (UseFE)
 	{
-		texcoord.xy = FishEye(texcoord_clean, FEFoV, FECrop);
+		o.texcoord.xy = FishEye(texcoord_clean, FEFoV, FECrop);
 	}
 
 	//Glass imperfections
 	[branch]
 	if (GeoIStrength != 0.0)
 	{
-		float2 bump = 0.6666667 * tex2D(spBumpTex, texcoord * _BUMP_MAP_SCALE).xy + 0.33333334 * tex2D(spBumpTex, texcoord * _BUMP_MAP_SCALE * 3.0).xy;
+		float2 bump = 0.6666667 * tex2D(spBumpTex, o.texcoord.xy * _BUMP_MAP_SCALE).xy + 0.3333333 * tex2D(spBumpTex, o.texcoord.xy * _BUMP_MAP_SCALE * 3.0).xy;
     
 		bump = bump * 2.0 - 1.0;
-		texcoord += bump * TEXEL_SIZE * (GeoIStrength * GeoIStrength);
+		o.texcoord.xy += bump * TEXEL_SIZE * (GeoIStrength * GeoIStrength);
 	}
-	float3 color = SampleLinear(texcoord).rgb;
+	float3 color = SampleLinear(o.texcoord.xy).rgb;
     
 	//Blur
 	float blur_mix = min((4 - GaussianQuality) * BlurStrength, 1.0);
 	if (BlurStrength != 0.0)
 	{
-		color = lerp(color, RedoTonemap(tex2D(spGaussianBlurTex, texcoord).rgb), blur_mix);
+		color = lerp(color, RedoTonemap(tex2D(spGaussianBlurTex, o.texcoord.xy).rgb), blur_mix);
 	}
 
 	//DOF
 	if (UseDOF)
 	{
-		float4 dof_data = tex2D(spBokehBlurTex, texcoord);
+		float4 dof_data = tex2D(spBokehBlurTex, o.texcoord.xy);
 		float dof_mix = min(10.0 * dof_data.a, 1.0);
 		color = lerp(color, RedoTonemap(dof_data.rgb), dof_mix);
 	}
@@ -1337,28 +1336,28 @@ float3 CameraPass(vs2ps o) : SV_Target
 		float3 influence = float3(-0.04, 0.0, 0.03);
 
 		float2 step_length = CAStrength * radiant_vector;
-		color.r = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, texcoord + step_length * influence.r).rgb).r : lerp(SampleLinear(texcoord + step_length * influence.r).r, RedoTonemap(tex2D(spGaussianBlurTex, texcoord + step_length * influence.r).rgb).r, blur_mix);
-		color.b = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, texcoord + step_length * influence.b).rgb).b : lerp(SampleLinear(texcoord + step_length * influence.b).b, RedoTonemap(tex2D(spGaussianBlurTex, texcoord + step_length * influence.b).rgb).b, blur_mix);
+		color.r = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, o.texcoord.xy + step_length * influence.r).rgb).r : lerp(SampleLinear(o.texcoord.xy + step_length * influence.r).r, RedoTonemap(tex2D(spGaussianBlurTex, o.texcoord.xy + step_length * influence.r).rgb).r, blur_mix);
+		color.b = (UseDOF) ? RedoTonemap(tex2D(spBokehBlurTex, o.texcoord.xy + step_length * influence.b).rgb).b : lerp(SampleLinear(o.texcoord.xy + step_length * influence.b).b, RedoTonemap(tex2D(spGaussianBlurTex, o.texcoord.xy + step_length * influence.b).rgb).b, blur_mix);
 	}
 
 	//Dirt
 	[branch]
 	if (DirtStrength != 0.0)
 	{
-		float3 weight = 0.15 * length(radiant_vector) * tex2D(spBloomTex6, -radiant_vector + 0.5).rgb + 0.25 * tex2D(spBloomTex3, texcoord.xy).rgb;
-		color += tex2D(spDirtTex, texcoord * float2(1.0, TEXEL_SIZE.x / TEXEL_SIZE.y) * DirtScale).rgb * weight * DirtStrength;
+		float3 weight = 0.15 * length(radiant_vector) * tex2D(spBloomTex6, -radiant_vector + 0.5).rgb + 0.25 * tex2D(spBloomTex3, o.texcoord.xy).rgb;
+		color += tex2D(spDirtTex, o.texcoord.xy * float2(1.0, TEXEL_SIZE.x / TEXEL_SIZE.y) * DirtScale).rgb * weight * DirtStrength;
 	}
 
 	//Bloom
 	if (BloomStrength != 0.0)
 	{
-		color += (BloomStrength*BloomStrength) * tex2D(spBloomTex0, texcoord).rgb;
+		color += (BloomStrength*BloomStrength) * tex2D(spBloomTex0, o.texcoord.xy).rgb;
 	}
 
 	//Lens flare
 	if (UseLF && (GlareStrength != 0.0 || (LFStrength != 0.0 && (GhostStrength != 0.0 || HaloStrength != 0.0))))
 	{
-		color += tex2D(spFlareTex, texcoord).rgb;
+		color += tex2D(spFlareTex, o.texcoord.xy).rgb;
 	}
 
 	//Vignette

@@ -160,29 +160,18 @@ uniform float DirtScale < __UNIFORM_SLIDER_FLOAT1
 > = 1.35;
 
 //Bloom
-#if BUFFER_COLOR_SPACE > 1
-	static const float BLOOM_SHAPE_DEFAULT = 0.4;
-	static const float BLOOM_STRENGTH_DEFAULT = 0.18;
-#else
-	static const float BLOOM_SHAPE_DEFAULT = 0.5;
-	static const float BLOOM_STRENGTH_DEFAULT = 0.36;
-
-	#ifndef HDR_ACES_TONEMAP
-		#define HDR_ACES_TONEMAP 1
-	#endif
-#endif
 uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
 	ui_label = "Bloom amount";
 	ui_tooltip = "Amount of blooming to apply";
 	ui_category = "Bloom";
-> = BLOOM_STRENGTH_DEFAULT;
+> = 0.28;
 uniform float BloomShape < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
 	ui_label = "Bloom shape";
 	ui_tooltip = "Controls shape of bloom";
 	ui_category = "Bloom";
-> = BLOOM_SHAPE_DEFAULT;
+> = 0.4;
 uniform float BloomRadius < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.25; ui_max = 1.5;
 	ui_label = "Bloom radius";
@@ -205,6 +194,10 @@ uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
 	static const float LFLARE_GLOCALMASK_DEFAULT = true;
 	static const float LFLARE_CURVE_DEFAULT = 1.0;
 	static const float LFLARE_STRENGTH_DEFAULT = 0.25;
+
+	#ifndef HDR_ACES_TONEMAP
+		#define HDR_ACES_TONEMAP 1
+	#endif
 #endif
 uniform bool UseLF <
 	ui_type = "bool";

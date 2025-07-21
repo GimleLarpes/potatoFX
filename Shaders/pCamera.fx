@@ -19,6 +19,7 @@
 
 static const float PI = pUtils::PI;
 static const float EPSILON = pUtils::EPSILON;
+static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 
 //Blur
 uniform float BlurStrength < __UNIFORM_SLIDER_FLOAT1
@@ -160,11 +161,11 @@ uniform float DirtScale < __UNIFORM_SLIDER_FLOAT1
 
 //Bloom
 #if BUFFER_COLOR_SPACE > 1
-	static const float BLOOM_CURVE_DEFAULT = 1.0;
-	static const float BLOOM_GAMMA_DEFAULT = 1.0;
+	static const float BLOOM_SHAPE_DEFAULT = 0.4;
+	static const float BLOOM_STRENGTH_DEFAULT = 0.18;
 #else
-	static const float BLOOM_CURVE_DEFAULT = 1.0;
-	static const float BLOOM_GAMMA_DEFAULT = 0.8;
+	static const float BLOOM_SHAPE_DEFAULT = 0.5;
+	static const float BLOOM_STRENGTH_DEFAULT = 0.36;
 
 	#ifndef HDR_ACES_TONEMAP
 		#define HDR_ACES_TONEMAP 1
@@ -175,25 +176,25 @@ uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_label = "Bloom amount";
 	ui_tooltip = "Amount of blooming to apply";
 	ui_category = "Bloom";
-> = 0.18;
+> = BLOOM_STRENGTH_DEFAULT;
+uniform float BloomShape < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 1.0;
+	ui_label = "Bloom shape";
+	ui_tooltip = "Controls shape of bloom";
+	ui_category = "Bloom";
+> = BLOOM_SHAPE_DEFAULT;
 uniform float BloomRadius < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.1; ui_max = 1.0;
+	ui_min = 0.25; ui_max = 1.5;
 	ui_label = "Bloom radius";
 	ui_tooltip = "Controls radius of bloom";
 	ui_category = "Bloom";
-> = 0.95;
+> = 0.8;
 uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 1.0; ui_max = 5.0;
 	ui_label = "Bloom curve";
 	ui_tooltip = "What parts of the image to apply bloom to\n1 = linear      5 = brightest parts only";
 	ui_category = "Bloom";
-> = BLOOM_CURVE_DEFAULT;
-uniform float BloomGamma < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.1; ui_max = 2;
-	ui_label = "Bloom gamma";
-	ui_tooltip = "Controls shape of bloom";
-	ui_category = "Bloom";
-> = BLOOM_GAMMA_DEFAULT;
+> = 1.0;
 
 //Lens flare
 #if BUFFER_COLOR_SPACE > 1
@@ -525,10 +526,6 @@ uniform bool UseApproximateTransforms <
 	#define _DIRT_MAP_SOURCE "pDirtTex.png"
 #endif
 
-#ifndef _LENS_COLOR_MAP_RESOLUTION
-	#define _LENS_COLOR_MAP_RESOLUTION 16
-#endif
-
 #ifndef _STORAGE_TEX_RESOLUTION
 	#define _STORAGE_TEX_RESOLUTION 32
 #endif
@@ -658,10 +655,9 @@ float4 KarisAverage(float4 c)
 	return 1.0 / (1.0 + Oklab::get_Luminance_RGB(c.rgb) * 0.25);
 }
 
-float4 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction, bool sample_linear, int quality)
+float4 GaussianBlur(sampler s, float2 texcoord, float2 texel_size, float size, float2 direction, bool sample_linear, int quality)
 {
-	float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-	float2 step_length = TEXEL_SIZE * size;
+	float2 step_length = texel_size * size;
 
 	int start;
 	int end;
@@ -717,7 +713,7 @@ float4 GaussianBlur(sampler s, float2 texcoord, float size, float2 direction, bo
 	return color;
 }
 
-float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
+float3 BokehBlur(sampler s, float2 texcoord, float2 texel_size, float size, bool sample_linear)
 {
 	float brightness_compensation;
 	float size_compensation;
@@ -746,9 +742,8 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
 	}
 
 	static const float2 OFFSET[90] = { float2(0.0, 4.0), float2(3.4641, 2.0), float2(3.4641, -2.0), float2(0.0, -4.0), float2(-3.4641, -2.0), float2(-3.4641, 2.0), float2(0.0, 8.0), float2(6.9282, 4.0), float2(6.9282, -4.0), float2(0.0, -8.0), float2(-6.9282, -4.0), float2(-6.9282, 4.0), float2(4.0, 6.9282), float2(8.0, 0.0), float2(4.0, -6.9282), float2(-4.0, -6.9282), float2(-8.0, 0.0), float2(-4.0, 6.9282), float2(0.0, 12.0), float2(4.1042, 11.2763), float2(7.7135, 9.1925), float2(10.3923, 6.0), float2(11.8177, 2.0838), float2(11.8177, -2.0838), float2(10.3923, -6.0), float2(7.7135, -9.1925), float2(4.1042, -11.2763), float2(0.0, -12.0), float2(-4.1042, -11.2763), float2(-7.7135, -9.1925), float2(-10.3923, -6.0), float2(-11.8177, -2.0838), float2(-11.8177, 2.0838), float2(-10.3923, 6.0), float2(-7.7135, 9.1925), float2(-4.1042, 11.2763), float2(0.0, 16.0), float2(4.1411, 15.4548), float2(8.0, 13.8564), float2(11.3137, 11.3137), float2(13.8564, 8.0), float2(15.4548, 4.1411), float2(16.0, 0.0), float2(15.4548, -4.1411), float2(13.8564, -8.0), float2(11.3137, -11.3137), float2(8.0, -13.8564), float2(4.1411, -15.4548), float2(0.0, -16.0), float2(-4.1411, -15.4548), float2(-8.0, -13.8564), float2(-11.3137, -11.3137), float2(-13.8564, -8.0), float2(-15.4548, -4.1411), float2(-16.0, 0.0), float2(-15.4548, 4.1411), float2(-13.8564, 8.0), float2(-11.3137, 11.3137), float2(-8.0, 13.8564), float2(-4.1411, 15.4548), float2(0.0, 20.0), float2(4.1582, 19.563), float2(8.1347, 18.2709), float2(11.7557, 16.1803), float2(14.8629, 13.3826), float2(17.3205, 10.0), float2(19.0211, 6.1803), float2(19.8904, 2.0906), float2(19.8904, -2.0906), float2(19.0211, -6.1803), float2(17.3205, -10.0), float2(14.8629, -13.3826), float2(11.7557, -16.1803), float2(8.1347, -18.2709), float2(4.1582, -19.563), float2(0.0, -20.0), float2(-4.1582, -19.563), float2(-8.1347, -18.2709), float2(-11.7557, -16.1803), float2(-14.8629, -13.3826), float2(-17.3205, -10.0), float2(-19.0211, -6.1803), float2(-19.8904, -2.0906), float2(-19.8904, 2.0906), float2(-19.0211, 6.1803), float2(-17.3205, 10.0), float2(-14.8629, 13.3826), float2(-11.7557, 16.1803), float2(-8.1347, 18.2709), float2(-4.1582, 19.563) };
-    
-	float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-	float2 step_length = TEXEL_SIZE * size * size_compensation;
+
+	float2 step_length = texel_size * size * size_compensation;
 
 	static const float MAX_VARIANCE = 0.1;
 	float2 variance = pUtils::FrameCount * float2(sin(2000.0 * PI * texcoord.x), cos(2000.0 * PI * texcoord.y)) * 1000.0;
@@ -779,14 +774,14 @@ float3 BokehBlur(sampler s, float2 texcoord, float size, bool sample_linear)
 	return color * brightness_compensation;
 }
 
-float4 KawaseBlurDownSample(sampler s, float2 texcoord)
+float4 KawaseBlurDownSample(sampler s, float2 texcoord, float2 texel_size)
 {
-    float2 HALF_TEXEL = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * 0.5;
+    float2 half_texel = texel_size * 0.5;
 
-    float2 DirDiag1 = float2(-HALF_TEXEL.x,  HALF_TEXEL.y); // Top left
-    float2 DirDiag2 = float2( HALF_TEXEL.x,  HALF_TEXEL.y); // Top right
-    float2 DirDiag3 = float2( HALF_TEXEL.x, -HALF_TEXEL.y); // Bottom right
-    float2 DirDiag4 = float2(-HALF_TEXEL.x, -HALF_TEXEL.y); // Bottom left
+    float2 DirDiag1 = float2(-half_texel.x,  half_texel.y); // Top left
+    float2 DirDiag2 = float2( half_texel.x,  half_texel.y); // Top right
+    float2 DirDiag3 = float2( half_texel.x, -half_texel.y); // Bottom right
+    float2 DirDiag4 = float2(-half_texel.x, -half_texel.y); // Bottom left
 
     float4 color = tex2D(s, texcoord) * 4.0;
     color += tex2D(s, texcoord + DirDiag1);
@@ -796,18 +791,18 @@ float4 KawaseBlurDownSample(sampler s, float2 texcoord)
 
     return color * 0.125;
 }
-float4 KawaseBlurUpSample(sampler s, float2 texcoord)
+float4 KawaseBlurUpSample(sampler s, float2 texcoord, float2 texel_size)
 {
-    float2 HALF_TEXEL = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * 0.5;
+    float2 half_texel = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * 0.5;
 
-    float2 DirDiag1 = float2(-HALF_TEXEL.x,  HALF_TEXEL.y); // Top left
-    float2 DirDiag2 = float2( HALF_TEXEL.x,  HALF_TEXEL.y); // Top right
-    float2 DirDiag3 = float2( HALF_TEXEL.x, -HALF_TEXEL.y); // Bottom right
-    float2 DirDiag4 = float2(-HALF_TEXEL.x, -HALF_TEXEL.y); // Bottom left
-    float2 DirAxis1 = float2(-HALF_TEXEL.x,  0.0);          // Left
-    float2 DirAxis2 = float2( HALF_TEXEL.x,  0.0);          // Right
-    float2 DirAxis3 = float2(0.0,  HALF_TEXEL.y);           // Top
-    float2 DirAxis4 = float2(0.0, -HALF_TEXEL.y);           // Bottom
+    float2 DirDiag1 = float2(-half_texel.x,  half_texel.y); // Top left
+    float2 DirDiag2 = float2( half_texel.x,  half_texel.y); // Top right
+    float2 DirDiag3 = float2( half_texel.x, -half_texel.y); // Bottom right
+    float2 DirDiag4 = float2(-half_texel.x, -half_texel.y); // Bottom left
+    float2 DirAxis1 = float2(-half_texel.x,  0.0);          // Left
+    float2 DirAxis2 = float2( half_texel.x,  0.0);          // Right
+    float2 DirAxis3 = float2(0.0,  half_texel.y);           // Top
+    float2 DirAxis4 = float2(0.0, -half_texel.y);           // Bottom
 
     float4 color = 0.0;
     color += tex2D(s, texcoord + DirDiag1);
@@ -823,65 +818,67 @@ float4 KawaseBlurUpSample(sampler s, float2 texcoord)
     return color / 12.0;
 }
 
-float4 HQDownSample(sampler s, float2 texcoord)
+float4 HQDownSample(sampler s, float2 texcoord, float2 texel_size)
 {
-	float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-
-	static const float2 OFFSET[13] = { float2(-1.0, 1.0), float2(1.0, 1.0), float2(-1.0, -1.0), float2(1.0, -1.0),
-	                                   float2(-2.0, 2.0), float2(0.0, 2.0), float2(2.0, 2.0),
-									   float2(-2.0, 0.0), float2(0.0, 0.0), float2(2.0, 0.0),
-									   float2(-2.0, -2.0), float2(0.0, -2.0), float2(2.0, -1.0) };
-	static const float WEIGHT[13] = { 0.125, 0.125, 0.125, 0.125,
-	                                  0.03125, 0.0625, 0.03125,
-									  0.0625, 0.125, 0.0625,
-									  0.03125, 0.0625, 0.03125 };
+	static const float2 OFFSET[16] = { float2(-0.5, 0.5), float2(0.5, 0.5), float2(-0.5, -0.5), float2(0.5, -0.5),
+	                                   float2(-1.5, 1.5), float2(-0.5, 1.5), float2(-1.5, 0.5),
+									   float2(1.5, 1.5), float2(0.5, 1.5), float2(1.5, 0.5),
+									   float2(-1.5, -1.5), float2(-0.5, -1.5), float2(-1.5, -0.5),
+									   float2(1.5, -1.5), float2(0.5, -1.5), float2(1.5, -0.5) };
+	static const float WEIGHT[16] = { 0.125, 0.125, 0.125, 0.125,
+									  0.041, 0.042, 0.042,
+									  0.041, 0.042, 0.042,
+									  0.041, 0.042, 0.042,
+									  0.041, 0.042, 0.042 };
 
 	float4 color;
 	[unroll]
-	for (int i = 0; i < 13; ++i)
+	for (int i = 0; i < 16; ++i)
 	{
-		color += tex2D(s, texcoord + OFFSET[i] * TEXEL_SIZE) * WEIGHT[i];
+		color += tex2Dlod(s, float4(texcoord + OFFSET[i] * texel_size, 0.0, 0.0)) * WEIGHT[i];
 	}
+
 	return color;
 }
-float4 HQDownSampleKA(sampler s, float2 texcoord)
+float4 HQDownSampleKA(sampler s, float2 texcoord, float2 texel_size)
 {
-	float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-	
-	static const float2 OFFSET[13] = { float2(-1.0, 1.0), float2(1.0, 1.0), float2(-1.0, -1.0), float2(1.0, -1.0),
-	                                   float2(-2.0, 2.0), float2(0.0, 2.0), float2(2.0, 2.0),
-									   float2(-2.0, 0.0), float2(0.0, 0.0), float2(2.0, 0.0),
-									   float2(-2.0, -2.0), float2(0.0, -2.0), float2(2.0, -1.0) };
+	static const float2 OFFSET[16] = { float2(-0.5, 0.5), float2(0.5, 0.5), float2(-0.5, -0.5), float2(0.5, -0.5),
+	                                   float2(-1.5, 1.5), float2(-0.5, 1.5), float2(-1.5, 0.5),
+									   float2(1.5, 1.5), float2(0.5, 1.5), float2(1.5, 0.5),
+									   float2(-1.5, -1.5), float2(-0.5, -1.5), float2(-1.5, -0.5),
+									   float2(1.5, -1.5), float2(0.5, -1.5), float2(1.5, -0.5) };
 
-	float4 samplecolor[13];
+	float4 samplecolor[16];
 	[unroll]
-	for (int i = 0; i < 13; ++i)
+	for (int i = 0; i < 16; ++i)
 	{
-		samplecolor[i] = tex2D(s, texcoord + OFFSET[i] * TEXEL_SIZE);
+		samplecolor[i] = tex2Dlod(s, float4(texcoord + OFFSET[i] * texel_size, 0.0, 0.0));
 	}
 
 	//Groups
-	float4 groups[5];
+	float4 groups[9];
 	groups[0] = 0.125 * (samplecolor[0] + samplecolor[1] + samplecolor[2] + samplecolor[3]);
-	groups[1] = 0.03125 * (samplecolor[4] + samplecolor[5] + samplecolor[7] + samplecolor[8]);
-	groups[2] = 0.03125 * (samplecolor[5] + samplecolor[6] + samplecolor[8] + samplecolor[9]);
-	groups[3] = 0.03125 * (samplecolor[7] + samplecolor[8] + samplecolor[10] + samplecolor[11]);
-	groups[4] = 0.03125 * (samplecolor[8] + samplecolor[9] + samplecolor[11] + samplecolor[12]);
+	groups[1] = 0.015625 * (samplecolor[4] + samplecolor[5] + samplecolor[6] + samplecolor[0]);
+	groups[2] = 0.015625 * (samplecolor[5] + samplecolor[8] + samplecolor[0] + samplecolor[1]);
+	groups[3] = 0.015625 * (samplecolor[7] + samplecolor[8] + samplecolor[9] + samplecolor[1]);
+	groups[4] = 0.015625 * (samplecolor[6] + samplecolor[0] + samplecolor[12] + samplecolor[2]);
+	groups[5] = 0.015625 * (samplecolor[10] + samplecolor[11] + samplecolor[12] + samplecolor[2]);
+	groups[6] = 0.015625 * (samplecolor[1] + samplecolor[9] + samplecolor[3] + samplecolor[15]);
+	groups[7] = 0.015625 * (samplecolor[13] + samplecolor[14] + samplecolor[15] + samplecolor[3]);
+	groups[8] = 0.015625 * (samplecolor[2] + samplecolor[3] + samplecolor[11] + samplecolor[14]);
 
 	//Karis average
-	groups[0] *= KarisAverage(groups[0]);
-	groups[1] *= KarisAverage(groups[1]);
-	groups[2] *= KarisAverage(groups[2]);
-	groups[3] *= KarisAverage(groups[3]);
-	groups[4] *= KarisAverage(groups[4]);
+	[unroll]
+	for (int i = 0; i < 9; ++i)
+	{
+		groups[i] *= KarisAverage(groups[i]);
+	}
 
-	return groups[0] + groups[1] + groups[2] + groups[3] + groups[4];
+	return groups[0] + groups[1] + groups[2] + groups[3] + groups[4] + groups[5] + groups[6] + groups[7] + groups[8];
 }
 
-float4 HQUpSample(sampler s, float2 texcoord, float radius)
+float4 HQUpSample(sampler s, float2 texcoord, float2 texel_size, float radius, float weight)
 {
-	float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-
 	static const float2 OFFSET[9] = { float2(-1.0, 1.0), float2(0.0, 1.0), float2(1.0, 1.0),
 	                                  float2(-1.0, 0.0), float2(0.0, 0.0), float2(1.0, 0.0),
 									  float2(-1.0, -1.0), float2(0.0, -1.0), float2(1.0, -1.0) };
@@ -893,8 +890,10 @@ float4 HQUpSample(sampler s, float2 texcoord, float radius)
 	[unroll]
 	for (int i = 0; i < 9; ++i)
 	{
-		color += tex2D(s, texcoord + OFFSET[i] * TEXEL_SIZE * radius) * WEIGHT[i];
+		color += tex2Dlod(s, float4(texcoord + OFFSET[i] * texel_size * radius, 0.0, 0.0)) * WEIGHT[i];
 	}
+	color *= weight;
+
 	return color;
 }
 
@@ -995,7 +994,7 @@ vs2ps VS_Glare(uint id : SV_VertexID)
 	}
 	else
 	{
-		o.texcoord.z = 4.0 * GlareStrength * (0.4 * GlareQuality + 1.0);
+		o.texcoord.z = GlareStrength * (0.4 * GlareQuality + 1.0);
 	}
 	return o;
 }
@@ -1049,11 +1048,11 @@ float2 StoragePassC(float4 vpos : SV_Position, float2 texcoord : TexCoord) : COL
 //Blur
 float3 GaussianBlurPass1(vs2ps o) : COLOR
 {
-	return GaussianBlur(spBumpTex, o.texcoord.xy, BlurStrength, float2(1.0, 0.0), true, GaussianQuality).rgb;
+	return GaussianBlur(spBumpTex, o.texcoord.xy, TEXEL_SIZE, BlurStrength, float2(1.0, 0.0), true, GaussianQuality).rgb;
 }
 float3 GaussianBlurPass2(vs2ps o) : COLOR
 {
-	return GaussianBlur(spBokehBlurTex, o.texcoord.xy, BlurStrength, float2(0.0, 1.0), false, GaussianQuality).rgb;
+	return GaussianBlur(spBokehBlurTex, o.texcoord.xy, TEXEL_SIZE, BlurStrength, float2(0.0, 1.0), false, GaussianQuality).rgb;
 }
 
 //DOF
@@ -1061,7 +1060,7 @@ float4 BokehBlurPass(vs2ps o) : COLOR
 {
 	float size = abs(ReShade::GetLinearizedDepth(o.texcoord.xy) - o.texcoord.z) * o.texcoord.w;
 	float4 color;
-	color.rgb = (BlurStrength != 0.0) ? BokehBlur(spGaussianBlurTex, o.texcoord.xy, size, false) : BokehBlur(spBumpTex, o.texcoord.xy, size, true);
+	color.rgb = (BlurStrength != 0.0) ? BokehBlur(spGaussianBlurTex, o.texcoord.xy, TEXEL_SIZE, size, false) : BokehBlur(spBumpTex, o.texcoord.xy, TEXEL_SIZE, size, true);
 	color.a = size;
     
 	return color;
@@ -1081,74 +1080,69 @@ float4 HighPassFilter(vs2ps o) : COLOR
 //Downsample
 float4 BloomDownS1(vs2ps o) : COLOR
 {
-	return HQDownSampleKA(spBloomTex0, o.texcoord.xy);
+	return HQDownSampleKA(spBloomTex0, o.texcoord.xy, 2*TEXEL_SIZE);
 }
 float4 BloomDownS2(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex1, o.texcoord.xy);
+	return HQDownSample(spBloomTex1, o.texcoord.xy, 4*TEXEL_SIZE);
 }
 float4 BloomDownS3(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex2, o.texcoord.xy);
+	return HQDownSample(spBloomTex2, o.texcoord.xy, 8*TEXEL_SIZE);
 }
 float4 BloomDownS4(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex3, o.texcoord.xy);
+	return HQDownSample(spBloomTex3, o.texcoord.xy, 16*TEXEL_SIZE);
 }
 float4 BloomDownS5(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex4, o.texcoord.xy);
+	return HQDownSample(spBloomTex4, o.texcoord.xy, 32*TEXEL_SIZE);
 }
 float4 BloomDownS6(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex5, o.texcoord.xy);
+	return HQDownSample(spBloomTex5, o.texcoord.xy, 64*TEXEL_SIZE);
 }
 float4 BloomDownS7(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex6, o.texcoord.xy);
+	return HQDownSample(spBloomTex6, o.texcoord.xy, 128*TEXEL_SIZE);
 }
 float4 BloomDownS8(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex7, o.texcoord.xy);
+	return HQDownSample(spBloomTex7, o.texcoord.xy, 256*TEXEL_SIZE);
 }
 //Upsample
 float4 BloomUpS7(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex8, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex8, o.texcoord.xy, 512*TEXEL_SIZE, BloomRadius, exp2(-BloomShape*BloomShape * 10.0));
 }
 float4 BloomUpS6(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex7, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex7, o.texcoord.xy, 256*TEXEL_SIZE, BloomRadius, exp2(-BloomShape*BloomShape * 3.0));
 }
 float4 BloomUpS5(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex6, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex6, o.texcoord.xy, 128*TEXEL_SIZE, BloomRadius, exp2(-BloomShape*BloomShape * 2.0));
 }
 float4 BloomUpS4(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex5, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex5, o.texcoord.xy, 64*TEXEL_SIZE, BloomRadius, exp2(-BloomShape*BloomShape * 1.4));
 }
 float4 BloomUpS3(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex4, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex4, o.texcoord.xy, 32*TEXEL_SIZE, BloomRadius, exp2(-BloomShape*BloomShape * 1.2));
 }
 float4 BloomUpS2(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex3, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex3, o.texcoord.xy, 16*TEXEL_SIZE, BloomRadius, exp2(-BloomShape*BloomShape * 0.8));
 }
 float4 BloomUpS1(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex2, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex2, o.texcoord.xy, 8*TEXEL_SIZE, BloomRadius, exp2(-BloomShape*BloomShape * 3.0));
 }
 float4 BloomUpS0(vs2ps o) : COLOR
 {
-	float4 color = BloomRadius * HQUpSample(spBloomTex1, o.texcoord.xy, BloomRadius);
+	float4 color = HQUpSample(spBloomTex1, o.texcoord.xy, 4*TEXEL_SIZE, BloomRadius, 1.0);
 	color.rgb = RedoTonemap(color.rgb);
-
-	if (BloomGamma != 1.0)
-	{
-		color.rgb *= pow(abs(Oklab::get_Luminance_RGB(color.rgb / Oklab::INVNORM_FACTOR)), BloomGamma);
-	}
 	return color;
 }
 
@@ -1156,36 +1150,36 @@ float4 BloomUpS0(vs2ps o) : COLOR
 //Downsample
 float4 FlareDownS2(vs2ps o) : COLOR
 {
-	return KawaseBlurDownSample(spFlareTex, o.texcoord.xy);
+	return KawaseBlurDownSample(spFlareTex, o.texcoord.xy, 4*TEXEL_SIZE);
 }
 float4 FlareDownS3(vs2ps o) : COLOR
 {
-	return KawaseBlurDownSample(spBloomTex2, o.texcoord.xy);
+	return KawaseBlurDownSample(spBloomTex2, o.texcoord.xy, 8*TEXEL_SIZE);
 }
 float4 FlareDownS4(vs2ps o) : COLOR
 {
-	return KawaseBlurDownSample(spBloomTex3, o.texcoord.xy);
+	return KawaseBlurDownSample(spBloomTex3, o.texcoord.xy, 16*TEXEL_SIZE);
 }
 float4 FlareDownS5(vs2ps o) : COLOR
 {
-	return KawaseBlurDownSample(spBloomTex4, o.texcoord.xy);
+	return KawaseBlurDownSample(spBloomTex4, o.texcoord.xy, 32*TEXEL_SIZE);
 }
 //Upsample
 float4 FlareUpS4(vs2ps o) : COLOR
 {
-	return KawaseBlurUpSample(spBloomTex5, o.texcoord.xy);
+	return KawaseBlurUpSample(spBloomTex5, o.texcoord.xy, 64*TEXEL_SIZE);
 }
 float4 FlareUpS3(vs2ps o) : COLOR
 {
-	return KawaseBlurUpSample(spBloomTex4, o.texcoord.xy);
+	return KawaseBlurUpSample(spBloomTex4, o.texcoord.xy, 32*TEXEL_SIZE);
 }
 float4 FlareUpS2(vs2ps o) : COLOR
 {
-	return KawaseBlurUpSample(spBloomTex3, o.texcoord.xy);
+	return KawaseBlurUpSample(spBloomTex3, o.texcoord.xy, 16*TEXEL_SIZE);
 }
 float4 FlareUpS1(vs2ps o) : COLOR
 {
-	return KawaseBlurUpSample(spBloomTex2, o.texcoord.xy);
+	return KawaseBlurUpSample(spBloomTex2, o.texcoord.xy, 8*TEXEL_SIZE);
 }
 
 float4 CAPass(vs2ps o) : COLOR
@@ -1276,6 +1270,7 @@ float3 GhostsPass(vs2ps o) : COLOR
 }
 float3 GlarePass(vs2ps o) : COLOR
 {
+	float2 texel_size = 4*TEXEL_SIZE;
 	float2 radiant_vector = o.texcoord.xy - 0.5;
 
 	float2 d_vertical = float2(0.1, 1.0) - 0.5 * radiant_vector;
@@ -1283,8 +1278,8 @@ float3 GlarePass(vs2ps o) : COLOR
 	d_vertical /= length(d_vertical);
 	d_horizontal /= length(d_horizontal);
 
-	float4 s_vertical = GaussianBlur(spBloomTex1, o.texcoord.xy, o.texcoord.z, d_vertical, false, GlareQuality);
-	float4 s_horizontal = GaussianBlur(spBloomTex1, o.texcoord.xy, o.texcoord.z, d_horizontal, false, GlareQuality);
+	float4 s_vertical = GaussianBlur(spBloomTex1, o.texcoord.xy, texel_size, o.texcoord.z, d_vertical, false, GlareQuality);
+	float4 s_horizontal = GaussianBlur(spBloomTex1, o.texcoord.xy, texel_size, o.texcoord.z, d_horizontal, false, GlareQuality);
 
 	return (s_vertical.rgb * s_vertical.a + s_horizontal.rgb * s_horizontal.a) * (GlareStrength * GlareStrength) / (0.5 * GlareQuality + 1.0);
 }
@@ -1292,7 +1287,6 @@ float3 GlarePass(vs2ps o) : COLOR
 float3 CameraPass(vs2ps o) : SV_Target
 {
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
-	static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 	float2 radiant_vector = o.texcoord.xy - 0.5;
 	float2 texcoord_clean = o.texcoord.xy;
 	

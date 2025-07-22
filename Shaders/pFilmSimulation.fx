@@ -19,6 +19,7 @@
 
 static const float PI = pUtils::PI;
 static const float EPSILON = pUtils::EPSILON;
+static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 
 
 //LUT
@@ -91,7 +92,7 @@ uniform bool UseApproximateTransforms <
 
 static const float LUT_WhitePoint = 1.0; //Apply CLUT to entire range - modify LUT function to make this var redundant
 #ifndef cLUT_TextureName
-	#define cLUT_TextureName "lut.png"
+	#define cLUT_TextureName "hlut.png"
 #endif
 #ifndef cLUT_Resolution
 	#define cLUT_Resolution 32
@@ -159,65 +160,67 @@ float4 KarisAverage(float4 c)
 	return 1.0 / (1.0 + Oklab::get_Luminance_RGB(c.rgb) * 0.25);
 }
 
-float4 HQDownSample(sampler s, float2 texcoord)
+float4 HQDownSample(sampler s, float2 texcoord, float2 texel_size)
 {
-	float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-
-	static const float2 OFFSET[13] = { float2(-1.0, 1.0), float2(1.0, 1.0), float2(-1.0, -1.0), float2(1.0, -1.0),
-	                                   float2(-2.0, 2.0), float2(0.0, 2.0), float2(2.0, 2.0),
-									   float2(-2.0, 0.0), float2(0.0, 0.0), float2(2.0, 0.0),
-									   float2(-2.0, -2.0), float2(0.0, -2.0), float2(2.0, -1.0) };
-	static const float WEIGHT[13] = { 0.125, 0.125, 0.125, 0.125,
-	                                  0.03125, 0.0625, 0.03125,
-									  0.0625, 0.125, 0.0625,
-									  0.03125, 0.0625, 0.03125 };
+	static const float2 OFFSET[16] = { float2(-0.5, 0.5), float2(0.5, 0.5), float2(-0.5, -0.5), float2(0.5, -0.5),
+	                                   float2(-1.5, 1.5), float2(-0.5, 1.5), float2(-1.5, 0.5),
+									   float2(1.5, 1.5), float2(0.5, 1.5), float2(1.5, 0.5),
+									   float2(-1.5, -1.5), float2(-0.5, -1.5), float2(-1.5, -0.5),
+									   float2(1.5, -1.5), float2(0.5, -1.5), float2(1.5, -0.5) };
+	static const float WEIGHT[16] = { 0.125, 0.125, 0.125, 0.125,
+									  0.041, 0.042, 0.042,
+									  0.041, 0.042, 0.042,
+									  0.041, 0.042, 0.042,
+									  0.041, 0.042, 0.042 };
 
 	float4 color;
 	[unroll]
-	for (int i = 0; i < 13; ++i)
+	for (int i = 0; i < 16; ++i)
 	{
-		color += tex2D(s, texcoord + OFFSET[i] * TEXEL_SIZE) * WEIGHT[i];
+		color += tex2Dlod(s, float4(texcoord + OFFSET[i] * texel_size, 0.0, 0.0)) * WEIGHT[i];
 	}
+
 	return color;
 }
-float4 HQDownSampleKA(sampler s, float2 texcoord)
+float4 HQDownSampleKA(sampler s, float2 texcoord, float2 texel_size)
 {
-	float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-	
-	static const float2 OFFSET[13] = { float2(-1.0, 1.0), float2(1.0, 1.0), float2(-1.0, -1.0), float2(1.0, -1.0),
-	                                   float2(-2.0, 2.0), float2(0.0, 2.0), float2(2.0, 2.0),
-									   float2(-2.0, 0.0), float2(0.0, 0.0), float2(2.0, 0.0),
-									   float2(-2.0, -2.0), float2(0.0, -2.0), float2(2.0, -1.0) };
+	static const float2 OFFSET[16] = { float2(-0.5, 0.5), float2(0.5, 0.5), float2(-0.5, -0.5), float2(0.5, -0.5),
+	                                   float2(-1.5, 1.5), float2(-0.5, 1.5), float2(-1.5, 0.5),
+									   float2(1.5, 1.5), float2(0.5, 1.5), float2(1.5, 0.5),
+									   float2(-1.5, -1.5), float2(-0.5, -1.5), float2(-1.5, -0.5),
+									   float2(1.5, -1.5), float2(0.5, -1.5), float2(1.5, -0.5) };
 
-	float4 samplecolor[13];
+	float4 samplecolor[16];
 	[unroll]
-	for (int i = 0; i < 13; ++i)
+	for (int i = 0; i < 16; ++i)
 	{
-		samplecolor[i] = tex2D(s, texcoord + OFFSET[i] * TEXEL_SIZE);
+		samplecolor[i] = tex2Dlod(s, float4(texcoord + OFFSET[i] * texel_size, 0.0, 0.0));
 	}
 
 	//Groups
-	float4 groups[5];
+	float4 groups[9];
 	groups[0] = 0.125 * (samplecolor[0] + samplecolor[1] + samplecolor[2] + samplecolor[3]);
-	groups[1] = 0.03125 * (samplecolor[4] + samplecolor[5] + samplecolor[7] + samplecolor[8]);
-	groups[2] = 0.03125 * (samplecolor[5] + samplecolor[6] + samplecolor[8] + samplecolor[9]);
-	groups[3] = 0.03125 * (samplecolor[7] + samplecolor[8] + samplecolor[10] + samplecolor[11]);
-	groups[4] = 0.03125 * (samplecolor[8] + samplecolor[9] + samplecolor[11] + samplecolor[12]);
+	groups[1] = 0.015625 * (samplecolor[4] + samplecolor[5] + samplecolor[6] + samplecolor[0]);
+	groups[2] = 0.015625 * (samplecolor[5] + samplecolor[8] + samplecolor[0] + samplecolor[1]);
+	groups[3] = 0.015625 * (samplecolor[7] + samplecolor[8] + samplecolor[9] + samplecolor[1]);
+	groups[4] = 0.015625 * (samplecolor[6] + samplecolor[0] + samplecolor[12] + samplecolor[2]);
+	groups[5] = 0.015625 * (samplecolor[10] + samplecolor[11] + samplecolor[12] + samplecolor[2]);
+	groups[6] = 0.015625 * (samplecolor[1] + samplecolor[9] + samplecolor[3] + samplecolor[15]);
+	groups[7] = 0.015625 * (samplecolor[13] + samplecolor[14] + samplecolor[15] + samplecolor[3]);
+	groups[8] = 0.015625 * (samplecolor[2] + samplecolor[3] + samplecolor[11] + samplecolor[14]);
 
 	//Karis average
-	groups[0] *= KarisAverage(groups[0]);
-	groups[1] *= KarisAverage(groups[1]);
-	groups[2] *= KarisAverage(groups[2]);
-	groups[3] *= KarisAverage(groups[3]);
-	groups[4] *= KarisAverage(groups[4]);
+	[unroll]
+	for (int i = 0; i < 9; ++i)
+	{
+		groups[i] *= KarisAverage(groups[i]);
+	}
 
-	return groups[0] + groups[1] + groups[2] + groups[3] + groups[4];
+	return groups[0] + groups[1] + groups[2] + groups[3] + groups[4] + groups[5] + groups[6] + groups[7] + groups[8];
 }
 
-float4 HQUpSample(sampler s, float2 texcoord, float radius)
+float4 HQUpSample(sampler s, float2 texcoord, float2 texel_size, float radius, float weight)
 {
-	float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-
 	static const float2 OFFSET[9] = { float2(-1.0, 1.0), float2(0.0, 1.0), float2(1.0, 1.0),
 	                                  float2(-1.0, 0.0), float2(0.0, 0.0), float2(1.0, 0.0),
 									  float2(-1.0, -1.0), float2(0.0, -1.0), float2(1.0, -1.0) };
@@ -229,8 +232,10 @@ float4 HQUpSample(sampler s, float2 texcoord, float radius)
 	[unroll]
 	for (int i = 0; i < 9; ++i)
 	{
-		color += tex2D(s, texcoord + OFFSET[i] * TEXEL_SIZE * radius) * WEIGHT[i];
+		color += tex2Dlod(s, float4(texcoord + OFFSET[i] * texel_size * radius, 0.0, 0.0)) * WEIGHT[i];
 	}
+	color *= weight;
+
 	return color;
 }
 
@@ -307,42 +312,42 @@ float4 HighPassFilter(vs2ps o) : COLOR
 //Downsample
 float4 BloomDownS1(vs2ps o) : COLOR
 {
-	return HQDownSampleKA(spBloomTex0, o.texcoord.xy);
+	return HQDownSampleKA(spBloomTex0, o.texcoord.xy, 2*TEXEL_SIZE);
 }
 #if BUFFER_HEIGHT > 1024
 float4 BloomDownS2(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex1, o.texcoord.xy);
+	return HQDownSample(spBloomTex1, o.texcoord.xy, 4*TEXEL_SIZE);
 }
 #if BUFFER_HEIGHT > 2048
 float4 BloomDownS3(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex2, o.texcoord.xy);
+	return HQDownSample(spBloomTex2, o.texcoord.xy, 8*TEXEL_SIZE);
 }
 #if BUFFER_HEIGHT > 4096
 float4 BloomDownS4(vs2ps o) : COLOR
 {
-	return HQDownSample(spBloomTex3, o.texcoord.xy);
+	return HQDownSample(spBloomTex3, o.texcoord.xy, 16*TEXEL_SIZE);
 }
 //Upsample
 float4 BloomUpS3(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex4, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex4, o.texcoord.xy, 32*TEXEL_SIZE, BloomRadius, BloomRadius);
 }
 #endif
 float4 BloomUpS2(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex3, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex3, o.texcoord.xy, 16*TEXEL_SIZE, BloomRadius, BloomRadius);
 }
 #endif
 float4 BloomUpS1(vs2ps o) : COLOR
 {
-	return BloomRadius * HQUpSample(spBloomTex2, o.texcoord.xy, BloomRadius);
+	return HQUpSample(spBloomTex2, o.texcoord.xy, 8*TEXEL_SIZE, BloomRadius, BloomRadius);
 }
 #endif
 float4 BloomUpS0(vs2ps o) : COLOR
 {
-	float4 color = BloomRadius * HQUpSample(spBloomTex1, o.texcoord.xy, BloomRadius);
+	float4 color = HQUpSample(spBloomTex1, o.texcoord.xy, 4*TEXEL_SIZE, BloomRadius, BloomRadius);
 	color.rgb = RedoTonemap(color.rgb);
 
 	if (BloomGamma != 1.0)
@@ -356,7 +361,6 @@ float4 BloomUpS0(vs2ps o) : COLOR
 float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
-	static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 	float3 color = SampleLinear(texcoord).rgb;
 	
 	////Effects - TODO: IMPLEMENT FILM RESPONSE CURVE
@@ -392,7 +396,7 @@ float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord)
 	}
 
 	//LUT
-	// is the saturate requred? - Is log-behaviour baked into the cluts or how will it be one?
+	// is the saturate requred? - Is log-behaviour baked into the cluts (yes) or how will it be one?
 	//color = lerp(color, Apply_LUT(Oklab::Saturate_RGB(color)), CLUTIntensity);
 
 	if (!Oklab::IS_HDR) { color = Oklab::Saturate_RGB(color); }

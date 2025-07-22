@@ -2,11 +2,13 @@
 // pFilmSimulation.fx by Gimle Larpes
 // A high performance shader for artistic film simulations using HaldCLUTs.
 //
-// Once source of compatible CLUTs is:
+// HaldCLUTS are assumed to be in sRGB color space.
+//
+// Once source of compatible HaldCLUTs is:
 //   https://github.com/cedeber/hald-clut/tree/master/HaldCLUT/Film%20Simulation
 ///////////////////////////////////////////////////////////////////////////////////
 
-#define P_OKLAB_VERSION_REQUIRE 103
+#define P_OKLAB_VERSION_REQUIRE 104
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
 #include "Oklab.fxh"
@@ -38,7 +40,7 @@ uniform int GrainISO < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Grain";
 > = 100;
 uniform float GrainIntensity < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.0; ui_max = 1.0;
+	ui_min = 0.1; ui_max = 1.0;
 	ui_label = "Grain fineness";
 	ui_tooltip = "How fine the grain is, inversely proportional\nto the sensitivity of the emulsion";
 	ui_category = "Grain";
@@ -81,6 +83,27 @@ uniform float BloomGamma < __UNIFORM_SLIDER_FLOAT1
 	ui_category = "Halation";
 > = BLOOM_GAMMA_DEFAULT;
 
+//Filmic base and shoulder
+#if BUFFER_COLOR_SPACE > 1
+	static const float FILMIC_BASE_DEFAULT = 0.3;
+	static const float FILMIC_SHOULDER_DEFAULT = 0.3;
+#else
+	static const float FILMIC_BASE_DEFAULT = 0.3;
+	static const float FILMIC_SHOULDER_DEFAULT = 0.3;
+#endif
+uniform float FilmicBaseWidth < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 0.4;
+	ui_label = "Base width";
+	ui_tooltip = "Controls width of the base+fog region of the filmic response curve";
+	ui_category = "Filmic Curve";
+> = FILMIC_BASE_DEFAULT;
+uniform float FilmicShoulderWidth < __UNIFORM_SLIDER_FLOAT1
+	ui_min = 0.0; ui_max = 0.4;
+	ui_label = "Shoulder width";
+	ui_tooltip = "Controls width of the shoulder region of the filmic response curve";
+	ui_category = "Filmic Curve";
+> = FILMIC_SHOULDER_DEFAULT;
+
 
 //Performance
 uniform bool UseApproximateTransforms <
@@ -90,18 +113,23 @@ uniform bool UseApproximateTransforms <
 	ui_category = "Performance";
 > = false;
 
-static const float LUT_WhitePoint = 1.0; //Apply CLUT to entire range - modify LUT function to make this var redundant
+
 #ifndef cLUT_TextureName
 	#define cLUT_TextureName "hlut.png"
+=======
+	#define cLUT_TextureName "hald_clut.png"
+>>>>>>> 7017cab77e3f078a1510ff613cdb76f3b9e9c8f1
 #endif
-#ifndef cLUT_Resolution
-	#define cLUT_Resolution 32
+#ifndef cLUT_Level
+	#define cLUT_Level 12
 #endif
 #ifndef cLUT_Format
 	#define cLUT_Format RGBA8
 #endif
-texture cLUT < source = cLUT_TextureName; > { Height = cLUT_Resolution; Width = cLUT_Resolution * cLUT_Resolution; Format = cLUT_Format; };
-sampler scLUT { Texture = cLUT; };
+static const float LUT_WhitePoint = 1;
+
+texture cLUT < source = cLUT_TextureName; > { Height = cLUT_Level*cLUT_Level*cLUT_Level; Width = cLUT_Level*cLUT_Level*cLUT_Level; Format = cLUT_Format; };
+sampler scLUT { Texture = cLUT; AddressU = CLAMP; AddressV = CLAMP; AddressW = CLAMP; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; };
 
 texture pBloomTex0 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGBA16F; };
 sampler spBloomTex0 { Texture = pBloomTex0; AddressU = MIRROR; AddressV = MIRROR; };
@@ -122,6 +150,14 @@ sampler spBloomTex4 { Texture = pBloomTex3; AddressU = MIRROR; AddressV = MIRROR
 
 
 ////Functions
+float3 SampleCLUT(float2 texcoord)
+{
+	float3 color = tex2D(scLUT, texcoord).rgb;
+	color = (UseApproximateTransforms)
+		? Oklab::Fast_sRGB_to_Linear(color)
+		: Oklab::sRGB_to_Linear(color);
+	return color;
+}
 float3 SampleLinear(float2 texcoord)
 {
 	float3 color = tex2D(ReShade::BackBuffer, texcoord).rgb;
@@ -239,7 +275,7 @@ float4 HQUpSample(sampler s, float2 texcoord, float2 texel_size, float radius, f
 	return color;
 }
 
-float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Marty McFly
+float3 Apply_HaldCLUT(float3 c) //Adapted from LUT.fx by Marty McFly
 {
 	// TODO: FIX FUNCTION TO WORK WITH CLUTS FROM https://github.com/cedeber/hald-clut/tree/master/HaldCLUT/Film%20Simulation
 	static const float EXPANSION_FACTOR = Oklab::INVNORM_FACTOR;
@@ -247,23 +283,52 @@ float3 Apply_LUT(float3 c) //Adapted from LUT.fx by Marty McFly
 
 	float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
 	
-	if (bounds <= 1.0) //Only apply LUT if value is in LUT range
+	if (bounds <= 1.0) //Only apply LUT if value is in LUT range -- MAYBE CHANGE THIS LOGIC, SINCE THE SAMPLING PRETTY MUCH JUST CLAMPS IT
 	{
-		float2 texel_size = rcp(cLUT_Resolution);
-		texel_size.x /= cLUT_Resolution;
-
 		const float3 oc = LUT_coord;
-		LUT_coord.xy = (LUT_coord.xy * cLUT_Resolution - LUT_coord.xy + 0.5) * texel_size;
-		LUT_coord.z *= (cLUT_Resolution - 1.0);
-	
-		float lerp_factor = frac(LUT_coord.z);
-		LUT_coord.x += floor(LUT_coord.z) * texel_size.y;
-		c = lerp(tex2D(scLUT, LUT_coord.xy).rgb, tex2D(scLUT, float2(LUT_coord.x + texel_size.y, LUT_coord.y)).rgb, lerp_factor);
+		float2 texel_size = 1.0 / cLUT_Level;
+		texel_size.y /= cLUT_Level;
+									 //x is segmented in 16 parts, each red segment is 0-1 (also everything is shifted by one pixel to the left for some reason, 
+									 // so that first pixel is actually second, and last pixel is first)
+									 //y is segmented in 16*16, each green segment is slightly different so that the lowest value is 0=0,n=n, is dependent on both x&y
+									 //y is segmented in 16*16, each segment has constant blue color so that nx0=0, nx1=1
+		
+		//Mostly works, has issues in green channel
+		//Rewrite this to affect lutcoord
+		float x = texel_size.x * (LUT_coord.r + floor(LUT_coord.g * (cLUT_Level - 1))); //Check that this way of segmenting green is correct
+    	float y = texel_size.y * (LUT_coord.g + floor(LUT_coord.b * (cLUT_Level*cLUT_Level - 1)));
+		x += 0.5 * texel_size.x*texel_size.y;
+		y += 0.5 * texel_size.x*texel_size.y;
+
+		//Original code for cLUT_Level^3 x cLUT_Level^3
+		//float cube_resolution = cLUT_Level * cLUT_Level;
+    	//float cube_size = rcp(cube_resolution);
+
+		// float cube_size = cLUT_Level*cLUT_Level;
+		// float r = LUT_coord.r * (cube_size - 1);
+    	// float g =  LUT_coord.g * (cube_size - 1);
+    	// float b =  LUT_coord.b * (cube_size - 1);
+
+    	// float x = (r % cube_size) + (g % cLUT_Level) * cube_size;
+    	// float y = (b * cLUT_Level) + (g / cLUT_Level);
+
+		c = SampleCLUT(float2(x,y));
+		//c = tex2D(scLUT, float2(x,y)).rgb;
+
+		//OWN ATTEMPT - later use bilinear filtering!
+		// Calculate n'th square in x: Red is fractional in that square FRACTIONAL X = texel_size.x * LUT_coord.r
+		// Blue: Each texel_size.y*texel_size.y is it's own value, lerp between two:  BASE Y = texel_size.y*texel_size.y * floor(LUT_coord.b * (cLUT_Level*cLUT_Level - 1))
+		// Green: 0 in 0,0, 1 in 1,1 BASE X = texel_size.x * floor(LUT_coord.g * (cLUT_Level - 1)) // It's prob more complex, since it has a gradient - use fraction
+		//     Y FRACTION = texel_size.y*texel_size.y * LUT_coord.g // NOT COMPLETE, AS it seems to step along X in increments of 1 (scale of 0-255), at the end lowest value is 15, at first highest value is 240
+
+
+		//c = lerp(SampleCLUT(LOWER COORDINATE), SampleCLUT(HIGHER COORDINATE), lerp_factor);
 
 		if (bounds > 0.9 && LUT_WhitePoint != 1.0) //Fade out LUT to avoid banding
 		{
 			c = lerp(c, oc, 10.0 * (bounds - 0.9));
 		}
+		c = lerp(oc, c, CLUTIntensity);
 
 		return c * LUT_WhitePoint * EXPANSION_FACTOR;
 	}
@@ -307,7 +372,7 @@ float4 HighPassFilter(vs2ps o) : COLOR
 	float adapted_luminance = Oklab::get_Adapted_Luminance_RGB(RedoTonemap(color), 1.0);
 
 	color *= pow(abs(adapted_luminance), BloomCurve*BloomCurve);
-	return float4(color, 1.0); //Scuffed
+	return float4(color, adapted_luminance);
 }
 //Downsample
 float4 BloomDownS1(vs2ps o) : COLOR
@@ -348,11 +413,11 @@ float4 BloomUpS1(vs2ps o) : COLOR
 float4 BloomUpS0(vs2ps o) : COLOR
 {
 	float4 color = HQUpSample(spBloomTex1, o.texcoord.xy, 4*TEXEL_SIZE, BloomRadius, BloomRadius);
-	color.rgb = RedoTonemap(color.rgb);
+	//color.rgb = RedoTonemap(color.rgb); // Note: This is disabled bc the whole workflow is in expanded linear now
 
 	if (BloomGamma != 1.0)
 	{
-		color.rgb *= pow(abs(Oklab::get_Luminance_RGB(color.rgb / Oklab::INVNORM_FACTOR)), BloomGamma);
+		color.rgb *= pow(abs(Oklab::get_Luminance_RGB(color.rgb / Oklab::INVNORM_FACTOR)), BloomGamma); //Does this work in expanded?
 	}
 	return color;
 }
@@ -360,10 +425,11 @@ float4 BloomUpS0(vs2ps o) : COLOR
 
 float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
+<<<<<<< HEAD
 	static const float INVNORM_FACTOR = Oklab::INVNORM_FACTOR;
-	float3 color = SampleLinear(texcoord).rgb;
+	float3 color = SampleLinear(texcoord, true).rgb;
 	
-	////Effects - TODO: IMPLEMENT FILM RESPONSE CURVE
+	////Effects
 	//Bloom
 	if (BloomStrength != 0.0)
 	{
@@ -371,12 +437,12 @@ float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord)
 	}
 
 	//Noise
+	float optical_density = sqrt(GrainISO / 100);
 	[branch]
 	if (GrainIntensity != 0.0)
 	{
 		static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
 		static const float3 CHANNEL_NOISE = float3(1.0, 1.0, 1.0);
-		//Film sensitivity to color channels, try reading from LUT? - If feeling cursed, store in texcoord.zw and vpos.z (this would break DX9)
 		float luminance = Oklab::get_Luminance_RGB(color);
 
 		//White noise
@@ -391,15 +457,25 @@ float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord)
 
 		float3 gauss_noise = float3(r*cos(theta1) * CHANNEL_NOISE[0], r*sin(theta1) * CHANNEL_NOISE[1], r*cos(theta2) * CHANNEL_NOISE[2]);
 		
-		float weight = (sqrt(GrainISO / 100) * GrainIntensity * 0.01) * NOISE_CURVE / (luminance * (1.0 + rcp(INVNORM_FACTOR)) + 1.0); //Multiply luminance to simulate a wider dynamic range
+		float weight = (optical_density * GrainIntensity * 0.01) * NOISE_CURVE / (luminance * (1.0 + rcp(INVNORM_FACTOR)) + 1.0); //Multiply luminance to simulate a wider dynamic range
 		color.rgb = ClipBlacks(color.rgb + gauss_noise * weight);
 	}
 
-	//LUT
-	// is the saturate requred? - Is log-behaviour baked into the cluts (yes) or how will it be one?
-	//color = lerp(color, Apply_LUT(Oklab::Saturate_RGB(color)), CLUTIntensity);
+	//Filmic curve
+	// log-behaviour here, somehow? - or just tonemap from expanded range, since thats a filmic curve anyway
+	// Y = dD / d(log(H)), Y=response, H=exposure, D=optical density, controls contrast
+	// https://www.researchgate.net/figure/The-characteristic-curve-of-a-photographic-film_fig2_264811359
 
-	if (!Oklab::IS_HDR) { color = Oklab::Saturate_RGB(color); }
+
+	//DEBUG STUFF
+	color.r = texcoord.x;
+	color.g = texcoord.y;
+	color.b = texcoord.x*texcoord.y;
+	color = Apply_HaldCLUT(Oklab::Saturate_RGB(color)); //Debug, get LUT working
+
+	//if (!Oklab::IS_HDR) { color = Oklab::Saturate_RGB(Oklab::Tonemap(color)); } //TEMPORARILY DISABLED TO GET LUT WORKING
+	//LUT
+	//color = Apply_HaldCLUT(Oklab::Saturate_RGB(color)); //Linearize when sampling LUT
 	color = (UseApproximateTransforms)
 		? Oklab::Fast_Linear_to_DisplayFormat(color)
 		: Oklab::Linear_to_DisplayFormat(color);

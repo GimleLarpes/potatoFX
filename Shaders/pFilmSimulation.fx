@@ -23,7 +23,6 @@ static const float PI = pUtils::PI;
 static const float EPSILON = pUtils::EPSILON;
 static const float2 TEXEL_SIZE = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 
-
 //LUT
 uniform float CLUTIntensity < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
@@ -47,41 +46,34 @@ uniform float GrainIntensity < __UNIFORM_SLIDER_FLOAT1
 > = 0.5;
 
 //Halation
-#if BUFFER_COLOR_SPACE > 1
-	static const float BLOOM_CURVE_DEFAULT = 1.0;
-	//static const float BLOOM_GAMMA_DEFAULT = 1.0;
-#else
-	static const float BLOOM_CURVE_DEFAULT = 1.0;
-	//static const float BLOOM_GAMMA_DEFAULT = 0.8;
-
+#if  BUFFER_COLOR_SPACE < 2
 	#ifndef HDR_ACES_TONEMAP
 		#define HDR_ACES_TONEMAP 1
 	#endif
 #endif
-uniform float BloomStrength < __UNIFORM_SLIDER_FLOAT1
+uniform float HaloStrength < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.0; ui_max = 1.0;
 	ui_label = "Halation amount";
 	ui_tooltip = "Amount of light bleed from bright objects";
 	ui_category = "Halation";
 > = 0.4;
-uniform float BloomRadius < __UNIFORM_SLIDER_FLOAT1
+uniform float HaloRadius < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 0.1; ui_max = 1.0;
 	ui_label = "Halation radius";
 	ui_tooltip = "Controls radius of halation";
 	ui_category = "Halation";
 > = 0.5;
-uniform float BloomCurve < __UNIFORM_SLIDER_FLOAT1
+uniform float HaloCurve < __UNIFORM_SLIDER_FLOAT1
 	ui_min = 1.0; ui_max = 5.0;
 	ui_label = "Halation curve";
 	ui_tooltip = "What parts of the image have light bleed\n1 = linear      5 = brightest parts only";
 	ui_category = "Halation";
-> = BLOOM_CURVE_DEFAULT;
-/*uniform float BloomGamma < __UNIFORM_SLIDER_FLOAT1
-	ui_min = 0.1; ui_max = 2;
-	ui_label = "Halation gamma";
-	ui_tooltip = "Controls shape of Halation";
+> = 1.0;
+uniform float3 HaloColor < __UNIFORM_COLOR_FLOAT3
+	ui_label = "Halation Sensitivity";
+	ui_tooltip = "How prone different colors are to halation";
 	ui_category = "Halation";
-> = BLOOM_GAMMA_DEFAULT;*/
+> = float3(1.0, 0.25, 0.125);
 
 
 //Performance
@@ -198,7 +190,7 @@ float4 HQDownSampleKA(sampler s, float2 texcoord, float2 texel_size)
 	[unroll]
 	for (int i = 0; i < 16; ++i)
 	{
-		samplecolor[i] = tex2Dlod(s, float4(texcoord + OFFSET[i] * texel_size, 0.0, 0.0));
+		samplecolor[i] = tex2Dlod(s, float4(texcoord + OFFSET[i] * texel_size, 0.0, 0.0)) * float4(HaloColor, 1.0);
 	}
 
 	//Groups
@@ -396,7 +388,7 @@ vs2ps vs_basic(const uint id)
 vs2ps VS_Bloom(uint id : SV_VertexID)
 {   
 	vs2ps o = vs_basic(id);
-	if (BloomStrength == 0.0)
+	if (HaloStrength == 0.0)
 	{
 		o.vpos.xy = 0.0;
 	}
@@ -411,7 +403,7 @@ float4 HighPassFilter(vs2ps o) : COLOR
 	float3 color = SampleLinear(o.texcoord.xy, true).rgb;
 	float adapted_luminance = Oklab::get_Adapted_Luminance_RGB(RedoTonemap(color), 1.0);
 
-	color *= pow(abs(adapted_luminance), BloomCurve*BloomCurve);
+	color *= pow(abs(adapted_luminance), HaloCurve*HaloCurve);
 	return float4(color, adapted_luminance);
 }
 //Downsample
@@ -437,22 +429,22 @@ float4 BloomDownS4(vs2ps o) : COLOR
 //Upsample
 float4 BloomUpS3(vs2ps o) : COLOR
 {
-	return HQUpSample(spBloomTex4, o.texcoord.xy, 32*TEXEL_SIZE, BloomRadius, BloomRadius);
+	return HQUpSample(spBloomTex4, o.texcoord.xy, 32*TEXEL_SIZE, HaloRadius, HaloRadius);
 }
 #endif
 float4 BloomUpS2(vs2ps o) : COLOR
 {
-	return HQUpSample(spBloomTex3, o.texcoord.xy, 16*TEXEL_SIZE, BloomRadius, BloomRadius);
+	return HQUpSample(spBloomTex3, o.texcoord.xy, 16*TEXEL_SIZE, HaloRadius, HaloRadius);
 }
 #endif
 float4 BloomUpS1(vs2ps o) : COLOR
 {
-	return HQUpSample(spBloomTex2, o.texcoord.xy, 8*TEXEL_SIZE, BloomRadius, BloomRadius);
+	return HQUpSample(spBloomTex2, o.texcoord.xy, 8*TEXEL_SIZE, HaloRadius, HaloRadius);
 }
 #endif
 float4 BloomUpS0(vs2ps o) : COLOR
 {
-	return HQUpSample(spBloomTex1, o.texcoord.xy, 4*TEXEL_SIZE, BloomRadius, BloomRadius);
+	return HQUpSample(spBloomTex1, o.texcoord.xy, 4*TEXEL_SIZE, HaloRadius, HaloRadius);
 }
 
 
@@ -462,10 +454,10 @@ float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord)
 	float3 color = SampleLinear(texcoord, true).rgb;
 	
 	////Effects
-	//Bloom
-	if (BloomStrength != 0.0)
+	//HaloBloom
+	if (HaloStrength != 0.0)
 	{
-		color += (BloomStrength*BloomStrength) * tex2D(spBloomTex0, texcoord).rgb;// THIS IS IN LINEAR UNBOUND COLORSPACE, should the source bloom be tonemapped, color is in linear unbound space -> tonemap the combined result?
+		color += (HaloStrength*HaloStrength) * tex2D(spBloomTex0, texcoord).rgb;// THIS IS IN LINEAR UNBOUND COLORSPACE, should the source bloom be tonemapped, color is in linear unbound space -> tonemap the combined result?
 	}
 	color = RedoTonemap(color);
 
@@ -475,7 +467,7 @@ float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord)
 	if (GrainIntensity != 0.0)
 	{
 		static const float NOISE_CURVE = max(INVNORM_FACTOR * 0.025, 1.0);
-		static const float3 CHANNEL_NOISE = float3(1.0, 1.0, 1.0);
+		static const float3 CHANNEL_NOISE = float3(1.0, 1.0, 1.0);//TODO CHANNEL SENSITIVITY BASED ON Film Stock? - have couple presets + custom?
 		float luminance = Oklab::get_Luminance_RGB(color);
 
 		//White noise
@@ -496,9 +488,9 @@ float3 FilmSimulationPass(float4 vpos : SV_Position, float2 texcoord : TexCoord)
 	// OR SHOULD IT BE TONEMAPPED HERE?
 
 	//DEBUG STUFF
-	color.r = texcoord.x;
+	/*color.r = texcoord.x;
 	color.g = texcoord.y;
-	color.b = texcoord.x*texcoord.y;
+	color.b = texcoord.x*texcoord.y;*/
 
 	//LUT
 	color = Apply_HaldCLUT(Oklab::Saturate_RGB(color));

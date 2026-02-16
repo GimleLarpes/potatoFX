@@ -246,7 +246,7 @@ float4 HQUpSample(sampler s, float2 texcoord, float2 texel_size, float radius, f
 /*float3 Apply_HaldCLUT(float3 c) //Adapted from LUT.fx by Marty McFly
 {
 	// TODO: FIX FUNCTION TO WORK WITH CLUTS FROM https://github.com/cedeber/hald-clut/tree/master/HaldCLUT/Film%20Simulation
-	static const float EXPANSION_FACTOR =  Oklab::INVNORM_FACTOR;
+	static const float EXPANSION_FACTOR = Oklab::INVNORM_FACTOR;
 	float3 LUT_coord = c / EXPANSION_FACTOR / LUT_WhitePoint;
 
 	float bounds = max(LUT_coord.x, max(LUT_coord.y, LUT_coord.z));
